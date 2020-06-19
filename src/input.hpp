@@ -253,6 +253,15 @@ struct Iterative_solver_input
     /// Size of the variational subspace is this number times the number of bands.
     int subspace_size_{4};
 
+    /// Block size with which to increase the dimension of the subspace
+    int block_size{10};
+
+    // Minimum dimension of the variational subspace, should be >= num_bands
+    int min_dimension{10};
+
+    // Maximum dimension of the variational subspace, should be > min_dimension
+    int max_dimension{100}
+
     /// Tolerance for the eigen-energy difference \f$ |\epsilon_i^{old} - \epsilon_i^{new} | \f$.
     /** This parameter is reduced during the SCF cycle to reach the high accuracy of the wave-functions. */
     double energy_tolerance_{1e-2};

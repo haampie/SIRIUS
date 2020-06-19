@@ -153,6 +153,7 @@ normalized_preconditioned_residuals(sddk::memory_t mem_type__, sddk::spin_range 
         /* take the residual if it's norm is above the threshold */
         if (res_norm[i] > norm_tolerance__) {
             /* shift unconverged residuals to the beginning of array */
+            /* note: we can just keep them where they were  */
             if (n != i) {
                 for (int ispn: spins__) {
                     res__.copy_from(res__, 1, ispn, i, ispn, n);
@@ -183,6 +184,7 @@ normalized_preconditioned_residuals(sddk::memory_t mem_type__, sddk::spin_range 
 template <typename T>
 std::pair<int, double>
 residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N__, int num_bands__,
+          int num_locked,
           sddk::mdarray<double, 1>& eval__, sddk::dmatrix<T>& evec__, sddk::Wave_functions& hphi__,
           sddk::Wave_functions& ophi__, sddk::Wave_functions& hpsi__, sddk::Wave_functions& opsi__,
           sddk::Wave_functions& res__, sddk::mdarray<double, 2> const& h_diag__,
@@ -255,7 +257,7 @@ residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N
     }
 
     /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-    sddk::transform<T>(mem_type__, la_type__, ispn__, {&hphi__, &ophi__}, 0, N__, *evec_ptr, 0, 0, {&hpsi__, &opsi__}, 0, n);
+    sddk::transform<T>(mem_type__, la_type__, ispn__, {&hphi__, &ophi__}, num_locked, N__ - num_locked, *evec_ptr, num_locked, num_locked, {&hpsi__, &opsi__}, 0, n);
 
     return normalized_preconditioned_residuals<T>(mem_type__, sddk::spin_range(ispn__), n, *eval_ptr, hpsi__, opsi__, res__,
                                                h_diag__, o_diag__, norm_tolerance__);
