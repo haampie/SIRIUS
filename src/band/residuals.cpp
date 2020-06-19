@@ -264,7 +264,7 @@ residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N
 }
 
 template std::pair<int, double>
-residuals<double>(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N__, int num_bands__,
+residuals<double>(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N__, int num_bands__, int num_locked,
                   sddk::mdarray<double, 1>& eval__, sddk::dmatrix<double>& evec__, sddk::Wave_functions& hphi__,
                   sddk::Wave_functions& ophi__, sddk::Wave_functions& hpsi__, sddk::Wave_functions& opsi__,
                   sddk::Wave_functions& res__, sddk::mdarray<double, 2> const& h_diag__,
@@ -272,7 +272,7 @@ residuals<double>(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn_
                   std::function<bool(int, int)> is_converged__);
 
 template std::pair<int, double>
-residuals<double_complex>(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N__, int num_bands__,
+residuals<double_complex>(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N__, int num_bands__, int num_locked,
                           sddk::mdarray<double, 1>& eval__, sddk::dmatrix<double_complex>& evec__,
                           sddk::Wave_functions& hphi__, sddk::Wave_functions& ophi__, sddk::Wave_functions& hpsi__,
                           sddk::Wave_functions& opsi__, sddk::Wave_functions& res__,

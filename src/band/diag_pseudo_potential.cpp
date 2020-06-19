@@ -491,14 +491,14 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             // we know whether we are done with everything in this iteration.
             // but when the number of remaining residuals is small, we barely
             // extend the search subspace, so instead use block_size then.
-            int num_ritz = std::max(block_size, num_bands - num_locked)
+            int num_ritz = std::max(block_size, num_bands - num_locked);
 
             /* don't compute residuals on last iteration */
             if (!last_iteration) {
                 /* get new preconditioned residuals, and also hpsi and opsi as a by-product */
                 auto result = sirius::residuals<T>(
                     ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step,
-                    N, num_ritz, eval, evec, hphi, sphi, hpsi, spsi, res, h_o_diag.first,
+                    N, num_ritz, num_locked, eval, evec, hphi, sphi, hpsi, spsi, res, h_o_diag.first,
                     h_o_diag.second, itso.converge_by_energy_, itso.residual_tolerance_,
                     is_converged
                 );
@@ -594,10 +594,10 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     // but we need the interval [num_ritz, keep) as well.
                     if (keep > num_locked + num_ritz) {
                         transform<T>(
-                            ctx_preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, 1.0,
-                            std::vector<Wave_functions*>({&hphi, &sphi, &phi}, num_locked, N - num_locked,
+                            ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, 1.0,
+                            std::vector<Wave_functions*>({&hphi, &sphi, &phi}), num_locked, N - num_locked,
                             evec, num_locked, num_locked + num_ritz, 0.0,
-                            {&hpsi, &spsi, &psi}, num_locked + num_ritz, keep - num_locked - num_ritz)
+                            {&hpsi, &spsi, &psi}, num_locked + num_ritz, keep - num_locked - num_ritz
                         );
                     }
 
@@ -690,7 +690,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             kp.message(2, __function_name__, "step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
             for (int i = 0; i < num_bands - num_locked; i++) {
                 kp.message(4, __function_name__, "eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f\n", i, eval[i],
-                    std::abs(eval[i] - eval_old[i]), kp.band_ofccupancy(i, ispin_step));
+                    std::abs(eval[i] - eval_old[i]), kp.band_occupancy(i, ispin_step));
             }
             niter++;
         }
@@ -925,7 +925,7 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
 
             /* get new preconditionined residuals, and also opsi and psi as a by-product */
             auto result = sirius::residuals<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0,
-                                     N, nevec, eval, evec, sphi, phi, spsi, psi, res, o_diag, o_diag1,
+                                     N, nevec, 0, eval, evec, sphi, phi, spsi, psi, res, o_diag, o_diag1,
                                      itso.converge_by_energy_, itso.residual_tolerance_,
                                      [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < iterative_solver_tolerance;});
             n = result.first;
