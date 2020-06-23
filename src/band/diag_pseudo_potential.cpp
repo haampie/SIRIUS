@@ -653,7 +653,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                 orthogonalize<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi, sphi, N, expand_with, ovlp, res);
             }
 
-            /* setup eigen-value problem
+            /* setup eigen-value problem. 
+             * TODO: we can skip the first num_locked of them here.
              * N is the number of previous basis functions
              * expand_with is the number of new basis functions */
             set_subspace_mtrx(N, expand_with, phi, hphi, hmlt, &hmlt_old);
