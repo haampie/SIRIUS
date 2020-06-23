@@ -488,11 +488,18 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
             bool last_iteration = k == (itso.num_steps_ - 1);
 
-            // compute at least num_bands - num_locked residuals s.t.
-            // we know whether we are done with everything in this iteration.
-            // but when the number of remaining residuals is small, we barely
-            // extend the search subspace, so instead use block_size then.
-            int num_ritz = std::min(N - num_locked, std::max(block_size, num_bands - num_locked));
+            // To what extend should the search subspace be extended? The below is based on the following heuristics:
+            // Idea 1: Locking reduces the size of the dense eigenproblem, so make sure some vectors converge before
+            //         the first restart. Therefore pick block_size < num_bands s.t. we converge quickly to the first
+            //         so many eigenvectors, instead of poorly converging to everything when block_size = num_bands.
+            // Idea 2: If we just expand with `num_bands - num_locked` residuals of unconverged eigenpairs, there will
+            //         be a slowdown at the end, since the residuals might be nearly in the span of the search subspace
+            //         and there's few of them compared to the size of the subspace. When othogonalizing the new block
+            //         it seems like most diagonal values are close to zero. A potential solution is to add a few more
+            //         residuals of non-targeted eigenpairs with larger eigenvalues. It might add a bit richer information
+            //         to the search subspace and improve the convergence of the last few vecs. That's the 2 * ... term.
+            // Idea 3: We can only expand with N - num_locked vecs at most, since we have so many Ritz values.
+            int num_ritz = std::min({N - num_locked, 2 * (num_bands - num_locked), block_size});
 
             /* don't compute residuals on last iteration */
             if (!last_iteration) {
@@ -690,7 +697,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
             if (itso.orthogonalize_) {
                 /* solve standard eigen-value problem with the size N - num_locked */
-                int num_dense_eigenvals = std::min(N - num_locked, std::max(block_size, num_bands - num_locked));
+                int num_dense_eigenvals = std::min({N - num_locked, 2 * (num_bands - num_locked), block_size});
                 if (std_solver.solve(N - num_locked, num_dense_eigenvals, hmlt, num_locked, num_locked, &eval[0], evec)) {
                     std::stringstream s;
                     s << "error in diagonalization";
