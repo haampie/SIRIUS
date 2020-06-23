@@ -464,7 +464,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         int num_locked = 0;
 
         /* number of residuals to add to the search subspace */
-        int block_size = num_bands / 3;
+        int block_size = num_bands / 2;
 
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
         if (std_solver.solve(N, num_bands, hmlt, &eval[0], evec)) {
@@ -484,6 +484,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
         /* second phase: start iterative diagonalization */
         for (int k = 0; k < itso.num_steps_; k++) {
+            int num_lockable = 0;
 
             bool last_iteration = k == (itso.num_steps_ - 1);
 
@@ -503,7 +504,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     is_converged
                 );
 
-                n = result.first;
+                n = result.unconverged_residuals;
+                num_lockable = result.num_consecutive_smallest_converged;
             }
 
             /* verify convergence criteria */
@@ -511,14 +513,14 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             int num_converged = num_ritz - n;
             bool converged = num_locked + num_converged >= num_bands;
 
-            kp.message(2, __function_name__, "Converged vecs: %d/%d", num_locked + num_converged, num_bands);
+            kp.message(2, __function_name__, "Locked = %d. Converged = %d. Wanted = %d. Lockable = %d\n", num_locked, num_converged, num_bands, num_lockable);
 
             // This is a bit of a heuristic, but in case very few vectors are unconverged
             // `block_size` might be too big. Note there are at least block_size residuals.
-            int expand_with = std::min(2 * num_unconverged, block_size);
+            int expand_with = std::min(num_unconverged, block_size);
             bool should_restart = N + expand_with > num_phi;
 
-            kp.message(2, __function_name__, "Expansion size = %d vecs", expand_with);
+            kp.message(2, __function_name__, "Expansion size = %d vecs\n", expand_with);
 
             /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
             if (should_restart || converged || last_iteration) {
@@ -565,7 +567,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     int keep = itso.orthogonalize_ ? num_bands
                                                    : std::max(num_bands, num_locked + num_converged + block_size);
 
-                    kp.message(3, __function_name__, "restart keep %d", keep);
+                    kp.message(3, __function_name__, "Restart keep %d\n", keep);
 
                     hmlt_old.zero();
                     for (int i = num_locked; i < keep; i++) {
@@ -593,24 +595,27 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     // We have compute HΨ and OΨ for num_ritz vectors during the residual computation
                     // but we need the interval [num_ritz, keep) as well.
                     if (keep > num_locked + num_ritz) {
+                        kp.message(3, __function_name__, "%s", "Computing more of Hpsi and Opsi\n");
                         transform<T>(
                             ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, 1.0,
                             std::vector<Wave_functions*>({&hphi, &sphi, &phi}), num_locked, N - num_locked,
                             evec, num_locked, num_locked + num_ritz, 0.0,
                             {&hpsi, &spsi, &psi}, num_locked + num_ritz, keep - num_locked - num_ritz
                         );
+                    } else {
+                        kp.message(3, __function_name__, "%s", "No need to compute more of Hpsi and Opsi\n");
                     }
 
                     /* update basis functions, hphi and ophi */
                     for (int ispn = 0; ispn < num_sc; ispn++) {
-                         phi.copy_from( psi, keep - num_locked, nc_mag ? ispn : ispin_step, num_locked, nc_mag ? ispn : 0, 0);
-                        hphi.copy_from(hpsi, keep - num_locked, ispn, num_locked, ispn, 0);
-                        sphi.copy_from(spsi, keep - num_locked, ispn, num_locked, ispn, 0);
+                         phi.copy_from( psi, keep - num_locked, nc_mag ? ispn : ispin_step, num_locked, nc_mag ? ispn : 0, num_locked);
+                        hphi.copy_from(hpsi, keep - num_locked, ispn, 0, ispn, num_locked);
+                        sphi.copy_from(spsi, keep - num_locked, ispn, 0, ispn, num_locked);
                     }
 
                     // Remove the converged Ritz values from the vector
-                    for (int i = num_converged; i < num_bands - num_locked; ++i) {
-                        eval[i - num_converged] = eval[i];
+                    for (int i = num_lockable; i < num_bands - num_locked; ++i) {
+                        eval[i - num_lockable] = eval[i];
                     }
 
                     /* number of basis functions that we already have */
@@ -618,7 +623,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
                     // Only when we do orthogonalization we can lock vecs
                     if (itso.orthogonalize_) {
-                        num_locked += num_converged;
+                        num_locked += num_lockable;
                     }
                 }
             }
@@ -630,6 +635,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
             /* apply Hamiltonian and S operators to the new basis functions */
             Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, phi, &hphi, &sphi);
+
+            kp.message(2, __function_name__, "Orthogonalize %d to %d\n", N, N + expand_with);
 
             if (itso.orthogonalize_) {
                 orthogonalize<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi, sphi, N, expand_with, ovlp, res);
@@ -928,8 +935,8 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
                                      N, nevec, 0, eval, evec, sphi, phi, spsi, psi, res, o_diag, o_diag1,
                                      itso.converge_by_energy_, itso.residual_tolerance_,
                                      [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < iterative_solver_tolerance;});
-            n = result.first;
-            current_frobenius_norm = result.second;
+            n = result.unconverged_residuals;
+            current_frobenius_norm = result.frobenius_norm;
 
             /* set the relative tolerance convergence criterion */
             if (k == 0) {

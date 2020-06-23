@@ -411,8 +411,8 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
                                   N, ncomp, 0, eval, evec, ophi, phi, opsi, psi, res, o_diag__, diag1,
                                   itso.converge_by_energy_, itso.residual_tolerance_,
                                   [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance_;});
-            n = result.first;
-            current_frobenius_norm = result.second;
+            n = result.unconverged_residuals;
+            current_frobenius_norm = result.frobenius_norm;
 
             /* set the relative tolerance convergence criterion */
             if (k == 0) {
@@ -667,8 +667,8 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
                                   N, num_bands, 0, eval, evec, hphi, ophi, hpsi, opsi, res, h_o_diag.first, h_o_diag.second,
                                   itso.converge_by_energy_, itso.residual_tolerance_,
                                   [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance_;});
-            n = result.first;
-            current_frobenius_norm = result.second;
+            n = result.unconverged_residuals;
+            current_frobenius_norm = result.frobenius_norm;
 
             /* set the relative tolerance convergence criterion */
             if (k == 0) {

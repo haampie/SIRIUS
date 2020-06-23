@@ -1474,7 +1474,7 @@ class Eigensolver_cuda: public Eigensolver
 
     int solve(ftn_int matrix_size__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__)
     {
-        return solve(matrix_size__, matrix_size__, A__, eval__, Z__);
+        return solve(matrix_size__, matrix_size__, A__, 0, 0, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, ftn_int row, ftn_int column, double* eval__,
@@ -1515,7 +1515,7 @@ class Eigensolver_cuda: public Eigensolver
 
     int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
-        return solve(matrix_size__, matrix_size__, A__, eval__, Z__);
+        return solve(matrix_size__, matrix_size__, A__, 0, 0, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__, double* eval__,
