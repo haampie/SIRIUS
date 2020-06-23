@@ -690,7 +690,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
             if (itso.orthogonalize_) {
                 /* solve standard eigen-value problem with the size N - num_locked */
-                if (std_solver.solve(N - num_locked, num_bands - num_locked, hmlt, num_locked, num_locked, &eval[0], evec)) {
+                int num_dense_eigenvals = std::max(block_size, num_bands - num_locked);
+                if (std_solver.solve(N - num_locked, num_dense_eigenvals, hmlt, num_locked, num_locked, &eval[0], evec)) {
                     std::stringstream s;
                     s << "error in diagonalization";
                     TERMINATE(s);
