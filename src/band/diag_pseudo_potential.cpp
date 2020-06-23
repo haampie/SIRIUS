@@ -596,12 +596,23 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     // but we need the interval [num_ritz, keep) as well.
                     if (keep > num_locked + num_ritz) {
                         kp.message(3, __function_name__, "%s", "Computing more of Hpsi and Opsi\n");
+
+                        // Hpsi and Spsi are in the first columns, so no need to worry about num_locked
                         transform<T>(
                             ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, 1.0,
-                            std::vector<Wave_functions*>({&hphi, &sphi, &phi}), num_locked, N - num_locked,
+                            std::vector<Wave_functions*>({&hphi, &sphi}), num_locked, N - num_locked,
                             evec, num_locked, num_locked + num_ritz, 0.0,
-                            {&hpsi, &spsi, &psi}, num_locked + num_ritz, keep - num_locked - num_ritz
+                            {&hpsi, &spsi}, num_ritz, keep - num_locked - num_ritz
                         );
+
+                        // psi does have the locked vectors stored as well.
+                        transform<T>(
+                            ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, 1.0,
+                            std::vector<Wave_functions*>({&phi}), num_locked, N - num_locked,
+                            evec, num_locked, num_locked + num_ritz, 0.0,
+                            {&psi}, num_locked + num_ritz, keep - num_locked - num_ritz
+                        );
+
                     } else {
                         kp.message(3, __function_name__, "%s", "No need to compute more of Hpsi and Opsi\n");
                     }
