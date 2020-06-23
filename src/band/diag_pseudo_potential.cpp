@@ -511,7 +511,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             /* verify convergence criteria */
             int num_unconverged = n;
             int num_converged = num_ritz - n;
-            bool converged = num_locked + num_converged >= num_bands;
+            bool converged = num_locked + num_converged + itso.min_num_res_ >= num_bands;
 
             kp.message(3, __function_name__, "Locked = %d. Converged = %d. Wanted = %d. Lockable = %d\n", num_locked, num_converged, num_bands, num_lockable);
 
