@@ -151,15 +151,9 @@ normalized_preconditioned_residuals(sddk::memory_t mem_type__, sddk::spin_range 
     res__.normalize(pu, spins__, num_bands__);
 
     // Move forwards to the first eigenvec that has not yet converged
-    int j{0};
-    for (; j < num_bands__ && res_norm[j] <= norm_tolerance__; j++)
-        std::cout << std::setw(10) << eval__[j] << " " << std::setw(10) << res_norm[j] << " converged!\n";
+    int consecutive_smallest_converged{0};
+    for (; consecutive_smallest_converged < num_bands__ && res_norm[j] <= norm_tolerance__; consecutive_smallest_converged++);
 
-    // Show the remainder.
-    for (int i = j; i < num_bands__; ++i)
-	std::cout << std::setw(10) << eval__[i] << " " << std::setw(10) << res_norm[i] << " not really converged\n";
-
-    int consecutive_smallest_converged = j;
     int n{0};
    
     for (int i = 0; i < num_bands__; i++) {

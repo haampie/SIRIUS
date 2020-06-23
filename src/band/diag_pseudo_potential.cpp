@@ -513,14 +513,14 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             int num_converged = num_ritz - n;
             bool converged = num_locked + num_converged >= num_bands;
 
-            kp.message(2, __function_name__, "Locked = %d. Converged = %d. Wanted = %d. Lockable = %d\n", num_locked, num_converged, num_bands, num_lockable);
+            kp.message(3, __function_name__, "Locked = %d. Converged = %d. Wanted = %d. Lockable = %d\n", num_locked, num_converged, num_bands, num_lockable);
 
             // This is a bit of a heuristic, but in case very few vectors are unconverged
             // `block_size` might be too big. Note there are at least block_size residuals.
             int expand_with = std::min(num_unconverged, block_size);
             bool should_restart = N + expand_with > num_phi;
 
-            kp.message(2, __function_name__, "Expansion size = %d vecs\n", expand_with);
+            kp.message(3, __function_name__, "Expansion size = %d vecs\n", expand_with);
 
             /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
             if (should_restart || converged || last_iteration) {
@@ -607,7 +607,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
                         // psi does have the locked vectors stored as well.
                         transform<T>(
-                            ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, 1.0,
+                            ctx_.preferred_me:mory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, 1.0,
                             std::vector<Wave_functions*>({&phi}), num_locked, N - num_locked,
                             evec, num_locked, num_locked + num_ritz, 0.0,
                             {&psi}, num_locked + num_ritz, keep - num_locked - num_ritz
@@ -647,7 +647,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             /* apply Hamiltonian and S operators to the new basis functions */
             Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, expand_with, phi, &hphi, &sphi);
 
-            kp.message(2, __function_name__, "Orthogonalize %d to %d\n", N, N + expand_with);
+            kp.message(3, __function_name__, "Orthogonalize %d to %d\n", N, N + expand_with);
 
             if (itso.orthogonalize_) {
                 orthogonalize<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi, sphi, N, expand_with, ovlp, res);
