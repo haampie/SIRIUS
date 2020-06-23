@@ -607,7 +607,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
                         // psi does have the locked vectors stored as well.
                         transform<T>(
-                            ctx_.preferred_me:mory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, 1.0,
+                            ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, 1.0,
                             std::vector<Wave_functions*>({&phi}), num_locked, N - num_locked,
                             evec, num_locked, num_locked + num_ritz, 0.0,
                             {&psi}, num_locked + num_ritz, keep - num_locked - num_ritz

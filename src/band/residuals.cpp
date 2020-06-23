@@ -152,7 +152,9 @@ normalized_preconditioned_residuals(sddk::memory_t mem_type__, sddk::spin_range 
 
     // Move forwards to the first eigenvec that has not yet converged
     int consecutive_smallest_converged{0};
-    for (; consecutive_smallest_converged < num_bands__ && res_norm[j] <= norm_tolerance__; consecutive_smallest_converged++);
+    while (consecutive_smallest_converged < num_bands__ && res_norm[consecutive_smallest_converged] <= norm_tolerance__) {
+        ++consecutive_smallest_converged;
+    }
 
     int n{0};
    
