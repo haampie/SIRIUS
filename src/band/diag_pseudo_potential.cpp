@@ -464,7 +464,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         int num_locked = 0;
 
         /* number of residuals to add to the search subspace */
-        int block_size = num_bands / 2;
+        int block_size = itso.use_locking_ ? num_bands / 2 : num_bands;
 
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
         if (std_solver.solve(N, num_bands, hmlt, &eval[0], evec)) {
@@ -633,7 +633,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     N = keep;
 
                     // Only when we do orthogonalization we can lock vecs
-                    if (itso.orthogonalize_) {
+                    if (itso.use_locking_ && itso.orthogonalize_) {
                         num_locked += num_lockable;
                     }
                 }
