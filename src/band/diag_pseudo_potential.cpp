@@ -602,7 +602,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     // We have compute HΨ and OΨ for num_ritz vectors during the residual computation
                     // but we need the interval [num_ritz, keep) as well.
                     if (keep > num_locked + num_ritz) {
-                        kp.message(3, __function_name__, "%s", "Computing more of Hpsi and Opsi\n");
+                        kp.message(3, __function_name__, "Computing more of Hpsi and Opsi, we need %d vals\n", keep - num_locked);
 
                         // Hpsi and Spsi are in the first columns, so no need to worry about num_locked
                         transform<T>(
@@ -697,7 +697,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
             if (itso.orthogonalize_) {
                 /* solve standard eigen-value problem with the size N - num_locked */
-                int num_dense_eigenvals = std::min({N - num_locked, 2 * (num_bands - num_locked), block_size});
+                int num_dense_eigenvals = std::min({N - num_locked, std::max({num_bands, 2 * block_size})});
+                kp.message(3, __function_name__, "Computing %d Ritz pairs\n", num_dense_eigenvals);
                 if (std_solver.solve(N - num_locked, num_dense_eigenvals, hmlt, num_locked, num_locked, &eval[0], evec)) {
                     std::stringstream s;
                     s << "error in diagonalization";
