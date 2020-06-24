@@ -520,14 +520,12 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             int num_converged = num_ritz - n;
             bool converged = num_locked + num_converged + itso.min_num_res_ >= num_bands;
 
-            kp.message(3, __function_name__, "Locked = %d. Converged = %d. Wanted = %d. Lockable = %d\n", num_locked, num_converged, num_bands, num_lockable);
-
             // This is a bit of a heuristic, but in case very few vectors are unconverged
             // `block_size` might be too big. Note there are at least block_size residuals.
             int expand_with = std::min(num_unconverged, block_size);
             bool should_restart = N + expand_with > num_phi;
 
-            kp.message(3, __function_name__, "Expansion size = %d vecs\n", expand_with);
+            kp.message(3, __function_name__, "Restart = %s. Locked = %d. Converged = %d. Wanted = %d. Lockable = %d. Num ritz = %d. Expansion size = %d\n", should_restart ? "yes" : "no", num_locked, num_converged, num_bands, num_lockable, num_ritz, expand_with);
 
             /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
             if (should_restart || converged || last_iteration) {
