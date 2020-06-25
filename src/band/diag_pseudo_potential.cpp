@@ -575,8 +575,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     // When we restart, we have to keep at least num_bands eigenvecs
                     // but if we are close to being converged, we don't want to throw
                     // away everything, so keep block_size more.
-                    int keep = itso.orthogonalize_ ? num_bands
-                                                   : std::min(N, std::max(num_bands, num_locked + num_converged + min_dimension));
+                    int keep = num_bands;
 
                     kp.message(3, __function_name__, "Restart keep %d\n", keep);
 
@@ -704,7 +703,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                    We might compute more eigenpairs than we really need; it's just
                    that we need so many of them at restart, and we cannot yet know
                    if we have to restart here. */
-                num_preritz_available = std::min({N - num_locked, std::max(num_bands - num_locked, num_converged + min_dimension)});
+                num_preritz_available = num_bands - num_locked;
                 kp.message(3, __function_name__, "Computing %d pre-Ritz pairs\n", num_preritz_available);
                 if (std_solver.solve(N - num_locked, num_preritz_available, hmlt, num_locked, num_locked, &eval[0], evec)) {
                     std::stringstream s;
