@@ -1118,7 +1118,7 @@ class Eigensolver_magma: public Eigensolver
     }
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, ftn_int row, ftn_int column, double* eval__, dmatrix<double>& Z__)
     {
         PROFILE("Eigensolver_magma|dsygvdx");
 
@@ -1136,7 +1136,7 @@ class Eigensolver_magma: public Eigensolver
         int info;
         int m;
 
-        magma_dsyevdx(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__, A__.at(memory_t::host), lda, 0.0, 0.0, 1,
+        magma_dsyevdx(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__, A__.at(memory_t::host, row, column), lda, 0.0, 0.0, 1,
                       nev__, &m, w.get(), h_work.get(), lwork, iwork.get(), liwork, &info);
 
         if (nt != omp_get_max_threads()) {
@@ -1150,9 +1150,9 @@ class Eigensolver_magma: public Eigensolver
         if (!info) {
             std::copy(w.get(), w.get() + nev__, eval__);
             #pragma omp parallel for schedule(static)
-            for (int i = 0; i < nev__; i++) {
-                std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
-                          Z__.at(memory_t::host, 0, i));
+            for (int i = row; i < row + nev__; i++) {
+                std::copy(A__.at(memory_t::host, row, i), A__.at(memory_t::host, row, i) + matrix_size__,
+                          Z__.at(memory_t::host, row, i));
             }
         }
 
@@ -1160,7 +1160,7 @@ class Eigensolver_magma: public Eigensolver
     }
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__,
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, ftn_int row, ftn_int column, double* eval__,
               dmatrix<double_complex>& Z__)
     {
         PROFILE("Eigensolver_magma|zheevdx");
@@ -1181,7 +1181,7 @@ class Eigensolver_magma: public Eigensolver
         auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
 
         magma_zheevdx_2stage(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__,
-                      reinterpret_cast<magmaDoubleComplex*>(A__.at(memory_t::host)), lda, 0.0, 0.0, 1,
+                      reinterpret_cast<magmaDoubleComplex*>(A__.at(memory_t::host, row, column)), lda, 0.0, 0.0, 1,
                       nev__, &m, w.get(), reinterpret_cast<magmaDoubleComplex*>(h_work.get()), lwork, rwork.get(),
                       lrwork, iwork.get(), liwork, &info);
 
@@ -1196,9 +1196,9 @@ class Eigensolver_magma: public Eigensolver
         if (!info) {
             std::copy(w.get(), w.get() + nev__, eval__);
             #pragma omp parallel for schedule(static)
-            for (int i = 0; i < nev__; i++) {
-                std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
-                          Z__.at(memory_t::host, 0, i));
+            for (int i = row; i < row + nev__; i++) {
+                std::copy(A__.at(memory_t::host, row, i), A__.at(memory_t::host, row, i) + matrix_size__,
+                          Z__.at(memory_t::host, row, i));
             }
         }
 
@@ -1353,7 +1353,7 @@ class Eigensolver_magma_gpu: public Eigensolver
     //}
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__,
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, ftn_int row, ftn_int column, double* eval__,
               dmatrix<double_complex>& Z__)
     {
         PROFILE("Eigensolver_magma_gpu|zheevdx");
@@ -1377,7 +1377,7 @@ class Eigensolver_magma_gpu: public Eigensolver
         auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
 
         magma_zheevdx_gpu(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__,
-                      reinterpret_cast<magmaDoubleComplex*>(A__.at(memory_t::device)), lda, 0.0, 0.0, 1,
+                      reinterpret_cast<magmaDoubleComplex*>(A__.at(memory_t::device, row, column)), lda, 0.0, 0.0, 1,
                       nev__, &m, w.get(),
                       reinterpret_cast<magmaDoubleComplex*>(z_work.get()), llda,
                       reinterpret_cast<magmaDoubleComplex*>(h_work.get()), lwork,
@@ -1398,7 +1398,7 @@ class Eigensolver_magma_gpu: public Eigensolver
             //    std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
             //              Z__.at(memory_t::host, 0, i));
             //}
-            acc::copyout(Z__.at(memory_t::host, 0, 0), Z__.ld(), A__.at(memory_t::device, 0, 0), A__.ld(),
+            acc::copyout(Z__.at(memory_t::host, row, column), Z__.ld(), A__.at(memory_t::device, row, column), A__.ld(),
                          matrix_size__, nev__);
         }
 
