@@ -621,9 +621,11 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                         sphi.copy_from(spsi, keep - num_locked, ispn, 0, ispn, num_locked);
                     }
 
-                    // Remove the converged Ritz values from the vector
-                    for (int i = num_lockable; i < num_bands - num_locked; ++i) {
-                        eval[i - num_lockable] = eval[i];
+                    // Remove the lockable Ritz values from the vector
+                    if (itso.use_locking_ && num_lockable > 0) {
+                        for (int i = num_lockable; i < num_bands - num_locked; ++i) {
+                            eval[i - num_lockable] = eval[i];
+                        }
                     }
 
                     hmlt_old.zero();
