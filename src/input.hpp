@@ -314,6 +314,11 @@ struct Iterative_solver_input
             init_eval_old_          = section.value("init_eval_old", init_eval_old_);
             init_subspace_          = section.value("init_subspace", init_subspace_);
             std::transform(init_subspace_.begin(), init_subspace_.end(), init_subspace_.begin(), ::tolower);
+
+            // locking implies orthogonalization, so let's just enforce it.
+            if (use_locking_) {
+                orthogonalize_ = true;
+            }
         }
     }
 };
