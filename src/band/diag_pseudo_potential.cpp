@@ -463,11 +463,12 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         /* converged vectors */
         int num_locked = 0;
 
-        /* number of residuals to add to the search subspace */
-        int block_size = itso.use_locking_ ? num_bands / 2 : num_bands;
-
-        /* minimum number of unconverged vecs to keep at restart */
-        int min_dimension = num_bands / 4;
+        /* number of residuals to add to the search subspace.
+           the idea here is to expand the search subspace with
+           a number of vectors significantly small than num_bands,
+           such that we converge quickly to the first so many
+           vectors, which can then be locked at restart. */
+        int block_size = std::min(1, itso.use_locking_ ? num_bands / 2 : num_bands);
 
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
         if (std_solver.solve(N, num_bands, hmlt, &eval[0], evec)) {
@@ -485,27 +486,13 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         /* number of newly added basis functions */
         int n{0};
 
-        int num_preritz_available = num_bands;
-
         /* second phase: start iterative diagonalization */
         for (int k = 0; k < itso.num_steps_; k++) {
             int num_lockable = 0;
 
             bool last_iteration = k == (itso.num_steps_ - 1);
 
-            // To what extend should the search subspace be extended? The below is based on the following heuristics:
-            // Idea 1: Locking reduces the size of the dense eigenproblem, so make sure some vectors converge before
-            //         the first restart. Therefore pick block_size < num_bands s.t. we converge quickly to the first
-            //         so many eigenvectors, instead of poorly converging to everything when block_size = num_bands.
-            // Idea 2: If we just expand with `num_bands - num_locked` residuals of unconverged eigenpairs, there will
-            //         be a slowdown at the end, since the residuals might be nearly in the span of the search subspace
-            //         and there's few of them compared to the size of the subspace. When othogonalizing the new block
-            //         it seems like most diagonal values are close to zero. A potential solution is to add a few more
-            //         residuals of non-targeted eigenpairs with larger eigenvalues. It might add a bit richer information
-            //         to the search subspace and improve the convergence of the last few vecs. That's the num_preritz_available
-            //         term.
-            // Idea 3: We can only expand with N - num_locked vecs at most, since we have so many Ritz values.
-            int num_ritz = num_preritz_available;
+            int num_ritz = num_bands - num_locked;
 
             /* don't compute residuals on last iteration */
             if (!last_iteration) {
@@ -526,12 +513,13 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             int num_converged = num_ritz - n;
             bool converged = num_locked + num_converged + itso.min_num_res_ >= num_bands;
 
-            // This is a bit of a heuristic, but in case very few vectors are unconverged
-            // `block_size` might be too big. Note there are at least block_size residuals.
+            /* Todo: num_unconverged might be very small at some point slowing down convergence
+                     can we add more? */
             int expand_with = std::min(num_unconverged, block_size);
             bool should_restart = N + expand_with > num_phi;
 
-            kp.message(3, __function_name__, "Restart = %s. Locked = %d. Converged = %d. Wanted = %d. Lockable = %d. Num ritz = %d. Expansion size = %d\n", should_restart ? "yes" : "no", num_locked, num_converged, num_bands, num_lockable, num_ritz, expand_with);
+            kp.message(3, __function_name__, "Restart = %s. Locked = %d. Converged = %d. Wanted = %d. Lockable = %d. Num ritz = %d. Expansion size = %d\n", 
+                       should_restart ? "yes" : "no", num_locked, num_converged, num_bands, num_lockable, num_ritz, expand_with);
 
             /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
             if (should_restart || converged || last_iteration) {
@@ -548,7 +536,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                         nc_mag ? 2 : ispin_step, 
                         {&phi}, num_locked, N - num_locked, 
                         evec, 0, 0, 
-                        {&psi}, num_locked, num_bands - num_locked);
+                        {&psi}, num_locked, num_ritz);
 
                     /* update eigen-values */
                     for (int j = num_locked; j < num_bands; j++) {
@@ -572,12 +560,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                 } else { /* otherwise, set Psi as a new trial basis */
                     kp.message(3, __function_name__, "%s", "subspace size limit reached\n");
 
-                    // When we restart, we have to keep at least num_bands eigenvecs
-                    // but if we are close to being converged, we don't want to throw
-                    // away everything, so keep block_size more.
+                    // TODO: consider keeping more than num_bands when nearly all Ritz vectors have converged.
                     int keep = num_bands;
-
-                    kp.message(3, __function_name__, "Restart keep %d\n", keep);
 
                     /* need to compute all hpsi and opsi states (not only unconverged) */
                     if (converge_by_energy) {
@@ -585,33 +569,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                             ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, 1.0,
                             std::vector<Wave_functions*>({&hphi, &sphi}), num_locked, N - num_locked,
                             evec, 0, 0, 0.0,
-                            {&hpsi, &spsi}, num_locked, num_bands - num_locked
+                            {&hpsi, &spsi}, 0, num_ritz
                         );
-                    }
-
-                    // We have compute HΨ and OΨ for num_ritz vectors during the residual computation
-                    // but we need the interval [num_ritz, keep) as well.
-                    if (keep > num_locked + num_ritz) {
-                        kp.message(3, __function_name__, "Computing more of Hpsi and Opsi, we need %d vals\n", keep - num_locked);
-
-                        // Hpsi and Spsi are in the first columns, so no need to worry about num_locked
-                        transform<T>(
-                            ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, 1.0,
-                            std::vector<Wave_functions*>({&hphi, &sphi}), num_locked, N - num_locked,
-                            evec, 0, num_ritz, 0.0,
-                            {&hpsi, &spsi}, num_ritz, keep - num_locked - num_ritz
-                        );
-
-                        // psi does have the locked vectors stored as well.
-                        transform<T>(
-                            ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, 1.0,
-                            std::vector<Wave_functions*>({&phi}), num_locked, N - num_locked,
-                            evec, 0, num_ritz, 0.0,
-                            {&psi}, num_locked + num_ritz, keep - num_locked - num_ritz
-                        );
-
-                    } else {
-                        kp.message(3, __function_name__, "%s", "No need to compute more of Hpsi and Opsi\n");
                     }
 
                     /* update basis functions, hphi and ophi */
@@ -623,7 +582,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
                     // Remove the lockable Ritz values from the vector
                     if (itso.use_locking_ && num_lockable > 0) {
-                        for (int i = num_lockable; i < num_bands - num_locked; ++i) {
+                        for (int i = num_lockable; i < num_ritz; ++i) {
                             eval[i - num_lockable] = eval[i];
                         }
                     }
@@ -633,7 +592,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                         hmlt_old.set(i, i, eval[i]);
                     }
 
-                    // No orthogonalization implies no locking, so this is all fine
+                    // No orthogonalization implies no locking
                     if (!itso.orthogonalize_) {
                         ovlp_old.zero();
                         for (int i = 0; i < keep; i++) {
@@ -645,7 +604,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     N = keep;
 
                     // Only when we do orthogonalization we can lock vecs
-                    if (itso.use_locking_ && itso.orthogonalize_) {
+                    if (itso.use_locking_) {
                         num_locked += num_lockable;
                     }
                 }
@@ -700,20 +659,16 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             eval_old >> eval;
 
             if (itso.orthogonalize_) {
-                /* solve standard eigen-value problem with the size N - num_locked.
-                   We might compute more eigenpairs than we really need; it's just
-                   that we need so many of them at restart, and we cannot yet know
-                   if we have to restart here. */
-                num_preritz_available = num_bands - num_locked;
-                kp.message(3, __function_name__, "Computing %d pre-Ritz pairs\n", num_preritz_available);
-                if (std_solver.solve(N - num_locked, num_preritz_available, hmlt, &eval[0], evec)) {
+                /* solve standard eigen-value problem with the size N - num_locked. */
+                kp.message(3, __function_name__, "Computing %d pre-Ritz pairs\n", num_bands - num_locked);
+                if (std_solver.solve(N - num_locked, num_bands - num_locked, hmlt, &eval[0], evec)) {
                     std::stringstream s;
                     s << "error in diagonalization";
                     TERMINATE(s);
                 }
             } else {
                 /* solve generalized eigen-value problem with the size N */
-                if (gen_solver.solve(N, num_bands - num_locked, hmlt, ovlp, &eval[0], evec)) {
+                if (gen_solver.solve(N, num_bands, hmlt, ovlp, &eval[0], evec)) {
                     std::stringstream s;
                     s << "error in diagonalization";
                     TERMINATE(s);
