@@ -302,7 +302,7 @@ struct Iterative_solver_input
             type_                   = section.value("type", type_);
             num_steps_              = section.value("num_steps", num_steps_);
             subspace_size_          = section.value("subspace_size", subspace_size_);
-            use_locking_            = section.value("use_locking", use_locking_);
+            use_locking_            = section.value("locking", use_locking_);
             energy_tolerance_       = section.value("energy_tolerance", energy_tolerance_);
             residual_tolerance_     = section.value("residual_tolerance", residual_tolerance_);
             relative_tolerance_     = section.value("relative_tolerance", relative_tolerance_);
