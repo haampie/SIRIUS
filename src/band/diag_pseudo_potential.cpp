@@ -468,7 +468,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
            a number of vectors significantly small than num_bands,
            such that we converge quickly to the first so many
            vectors, which can then be locked at restart. */
-        int block_size = std::min(1, itso.use_locking_ ? num_bands / 2 : num_bands);
+        int block_size = std::max(1, itso.use_locking_ ? num_bands / 2 : num_bands);
 
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
         if (std_solver.solve(N, num_bands, hmlt, &eval[0], evec)) {
