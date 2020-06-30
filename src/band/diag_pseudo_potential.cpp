@@ -304,13 +304,13 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
     Wave_functions sphi(mp, kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
 
     /* Hamiltonian, applied to new Psi wave-functions, plus some extra space */
-    Wave_functions hpsi(mp, kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions hpsi(mp, kp.gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
 
     /* S operator, applied to new Psi wave-functions */
-    Wave_functions spsi(mp, kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions spsi(mp, kp.gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
 
     /* residuals */
-    Wave_functions res(mp, kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions res(mp, kp.gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
 
     const int bs = ctx_.cyclic_block_size();
 
