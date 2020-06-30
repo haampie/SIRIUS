@@ -435,7 +435,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_subspace_mtrx(0, num_bands, phi, hphi, hmlt, &hmlt_old);
+        set_subspace_mtrx(0, num_bands, 0, phi, hphi, hmlt, &hmlt_old);
 
         if (!itso.orthogonalize_) {
             ovlp_old.zero();
@@ -547,7 +547,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                         ctx_.blas_linalg_t(), 
                         nc_mag ? 2 : ispin_step, 
                         {&phi}, num_locked, N - num_locked, 
-                        evec, num_locked, num_locked, 
+                        evec, 0, 0, 
                         {&psi}, num_locked, num_bands - num_locked);
 
                     /* update eigen-values */
@@ -580,8 +580,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     kp.message(3, __function_name__, "Restart keep %d\n", keep);
 
                     hmlt_old.zero();
-                    for (int i = num_locked; i < keep; i++) {
-                        hmlt_old.set(i, i, eval[i - num_locked]);
+                    for (int i = 0; i < keep - num_locked; i++) {
+                        hmlt_old.set(i, i, eval[i]);
                     }
 
                     // No orthogonalization implies no locking, so this is all fine
@@ -597,7 +597,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                         transform<T>(
                             ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, 1.0,
                             std::vector<Wave_functions*>({&hphi, &sphi}), num_locked, N - num_locked,
-                            evec, num_locked, num_locked, 0.0,
+                            evec, 0, 0, 0.0,
                             {&hpsi, &spsi}, num_locked, num_bands - num_locked
                         );
                     }
@@ -611,7 +611,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                         transform<T>(
                             ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, 1.0,
                             std::vector<Wave_functions*>({&hphi, &sphi}), num_locked, N - num_locked,
-                            evec, num_locked, num_locked + num_ritz, 0.0,
+                            evec, 0, num_ritz, 0.0,
                             {&hpsi, &spsi}, num_ritz, keep - num_locked - num_ritz
                         );
 
@@ -619,7 +619,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                         transform<T>(
                             ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, 1.0,
                             std::vector<Wave_functions*>({&phi}), num_locked, N - num_locked,
-                            evec, num_locked, num_locked + num_ritz, 0.0,
+                            evec, 0, num_ritz, 0.0,
                             {&psi}, num_locked + num_ritz, keep - num_locked - num_ritz
                         );
 
@@ -664,10 +664,9 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             }
 
             /* setup eigen-value problem. 
-             * TODO: we can skip the first num_locked of them here.
              * N is the number of previous basis functions
              * expand_with is the number of new basis functions */
-            set_subspace_mtrx(N, expand_with, phi, hphi, hmlt, &hmlt_old);
+            set_subspace_mtrx(N, expand_with, num_locked, phi, hphi, hmlt, &hmlt_old);
 
             if (ctx_.control().verification_ >= 1) {
                 double max_diff = check_hermitian(hmlt, N + expand_with);
@@ -680,7 +679,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
             if (!itso.orthogonalize_) {
                 /* setup overlap matrix */
-                set_subspace_mtrx(N, expand_with, phi, sphi, ovlp, &ovlp_old);
+                set_subspace_mtrx(N, expand_with, num_locked, phi, sphi, ovlp, &ovlp_old);
 
                 if (ctx_.control().verification_ >= 1) {
                     double max_diff = check_hermitian(ovlp, N + expand_with);
@@ -705,7 +704,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                    if we have to restart here. */
                 num_preritz_available = num_bands - num_locked;
                 kp.message(3, __function_name__, "Computing %d pre-Ritz pairs\n", num_preritz_available);
-                if (std_solver.solve(N - num_locked, num_preritz_available, hmlt, num_locked, num_locked, &eval[0], evec)) {
+                if (std_solver.solve(N - num_locked, num_preritz_available, hmlt, &eval[0], evec)) {
                     std::stringstream s;
                     s << "error in diagonalization";
                     TERMINATE(s);
@@ -928,7 +927,7 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_subspace_mtrx(N, n, phi, sphi, ovlp, &ovlp_old);
+        set_subspace_mtrx(N, n, 0, phi, sphi, ovlp, &ovlp_old);
         if (ctx_.control().verification_ >= 2 && ctx_.control().verbosity_ >= 2) {
             ovlp.serialize("<i|S|j> subspace matrix", N + n);
         }
@@ -1627,7 +1626,7 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
 ////    /* setup eigen-value problem
 ////     * N is the number of previous basis functions
 ////     * n is the number of new basis functions */
-////    set_subspace_mtrx(0, num_bands, phi_tmp, hphi_tmp, hmlt, hmlt_old);
+////    set_subspace_mtrx(0, num_bands, 0, phi_tmp, hphi_tmp, hmlt, hmlt_old);
 ////
 ////    if (std_evp_solver().solve(num_bands, num_bands, hmlt.template at<CPU>(), hmlt.ld(),
 ////                               eval.data(), evec.template at<CPU>(), evec.ld(),

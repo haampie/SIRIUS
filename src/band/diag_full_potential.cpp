@@ -343,7 +343,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
         }
 
         if (ctx_.control().verification_ >= 1) {
-            set_subspace_mtrx(0, N + n, phi, ophi, ovlp);
+            set_subspace_mtrx(0, N + n, 0, phi, ophi, ovlp);
 
             if (ctx_.control().verification_ >= 2) {
                 ovlp.serialize("overlap", N + n);
@@ -362,7 +362,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_subspace_mtrx(N, n, phi, ophi, ovlp, &ovlp_old);
+        set_subspace_mtrx(N, n, 0, phi, ophi, ovlp, &ovlp_old);
 
         if (ctx_.control().verification_ >= 1) {
             if (ctx_.control().verification_ >= 2) {
@@ -642,7 +642,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_subspace_mtrx(N, n, phi, hphi, hmlt, &hmlt_old);
+        set_subspace_mtrx(N, n, 0, phi, hphi, hmlt, &hmlt_old);
 
         /* increase size of the variation space */
         N += n;

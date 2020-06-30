@@ -225,7 +225,7 @@ residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N
         if (n) {
             eval_tmp = sddk::mdarray<double, 1>(n);
             eval_ptr = &eval_tmp;
-            evec_tmp = sddk::dmatrix<T>(N__, n, evec__.blacs_grid(), evec__.bs_row(), evec__.bs_col());
+            evec_tmp = sddk::dmatrix<T>(N__ - num_locked, n, evec__.blacs_grid(), evec__.bs_row(), evec__.bs_col());
             evec_ptr = &evec_tmp;
 
             int num_rows_local = evec_tmp.num_rows_local();
@@ -266,7 +266,7 @@ residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N
     }
 
     /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-    sddk::transform<T>(mem_type__, la_type__, ispn__, {&hphi__, &ophi__}, num_locked, N__ - num_locked, *evec_ptr, num_locked, num_locked, {&hpsi__, &opsi__}, 0, n);
+    sddk::transform<T>(mem_type__, la_type__, ispn__, {&hphi__, &ophi__}, num_locked, N__ - num_locked, *evec_ptr, 0, 0, {&hpsi__, &opsi__}, 0, n);
 
     return normalized_preconditioned_residuals<T>(mem_type__, sddk::spin_range(ispn__), n, *eval_ptr, hpsi__, opsi__, res__,
                                                h_diag__, o_diag__, norm_tolerance__);
