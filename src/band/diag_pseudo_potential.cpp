@@ -579,19 +579,6 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
                     kp.message(3, __function_name__, "Restart keep %d\n", keep);
 
-                    hmlt_old.zero();
-                    for (int i = 0; i < keep - num_locked; i++) {
-                        hmlt_old.set(i, i, eval[i]);
-                    }
-
-                    // No orthogonalization implies no locking, so this is all fine
-                    if (!itso.orthogonalize_) {
-                        ovlp_old.zero();
-                        for (int i = 0; i < keep; i++) {
-                            ovlp_old.set(i, i, 1);
-                        }
-                    }
-
                     /* need to compute all hpsi and opsi states (not only unconverged) */
                     if (converge_by_energy) {
                         transform<T>(
@@ -637,6 +624,19 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     // Remove the converged Ritz values from the vector
                     for (int i = num_lockable; i < num_bands - num_locked; ++i) {
                         eval[i - num_lockable] = eval[i];
+                    }
+
+                    hmlt_old.zero();
+                    for (int i = 0; i < keep - num_locked; i++) {
+                        hmlt_old.set(i, i, eval[i]);
+                    }
+
+                    // No orthogonalization implies no locking, so this is all fine
+                    if (!itso.orthogonalize_) {
+                        ovlp_old.zero();
+                        for (int i = 0; i < keep; i++) {
+                            ovlp_old.set(i, i, 1);
+                        }
                     }
 
                     /* number of basis functions that we already have */
