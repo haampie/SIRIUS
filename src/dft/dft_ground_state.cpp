@@ -212,11 +212,14 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
             std::printf("| SCF iteration %3i out of %3i |\n", iter, num_dft_iter);
             std::printf("+------------------------------+\n");
         }
+
+        kset_.find_band_occupancies();
+
         Hamiltonian0 H0(potential_);
+
         /* find new wave-functions */
         Band(ctx_).solve(kset_, H0, true);
-        /* find band occupancies */
-        kset_.find_band_occupancies();
+
         /* generate new density from the occupied wave-functions */
         density_.generate(kset_, ctx_.use_symmetry(), true, true);
 
