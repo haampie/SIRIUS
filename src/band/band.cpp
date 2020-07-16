@@ -158,14 +158,14 @@ Band::initialize_subspace(K_point_set& kset__, Hamiltonian0& H0__) const
     }
 
     /* reset the energies for the iterative solver to do at least two steps */
-    for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
-        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
-            for (int i = 0; i < ctx_.num_bands(); i++) {
-                kset__[ik]->band_energy(i, ispn, 0);
-                kset__[ik]->band_occupancy(i, ispn, ctx_.max_occupancy());
-            }
-        }
-    }
+    // for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
+    //     for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+    //         for (int i = 0; i < ctx_.num_bands(); i++) {
+    //             kset__[ik]->band_energy(i, ispn, 0);
+    //             kset__[ik]->band_occupancy(i, ispn, ctx_.max_occupancy());
+    //         }
+    //     }
+    // }
 }
 
 template <typename T>
