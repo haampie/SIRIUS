@@ -576,6 +576,7 @@ inline void symmetrize(const mdarray<double_complex, 4> &ns_,
                        mdarray<double_complex, 4> &dm_,
                        const bool hubbard_)
 {
+    PROFILE("sirius::symmetrize");
     for (int xi1 = 0; xi1 < indexb.size(); xi1++) {
         int l1  = indexb[xi1].l;
         int lm1 = indexb[xi1].lm;
