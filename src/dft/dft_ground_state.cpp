@@ -203,8 +203,24 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
 
     ctx_.iterative_solver_tolerance(initial_tolerance);
 
+    std::ofstream output_eigenvalues("eigenvalues.txt");
+    std::ofstream output_residuals("residuals.txt");
+    output_eigenvalues.precision(std::numeric_limits<double>::max_digits10);
+    output_residuals.precision(std::numeric_limits<double>::max_digits10);
+
     for (int iter = 0; iter < num_dft_iter; iter++) {
         PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
+
+        {
+            // Print the eigenvalues for the first k-points
+            for (int ik = 0; ik < kset_.num_kpoints(); ik++) {
+                for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+                    auto energies = kset_.get_band_energies(ik, ispn);
+                    std::copy(energies.begin(), energies.end(), std::ostream_iterator<double>(output_eigenvalues, " "));
+                }
+            }
+            output_eigenvalues << '\n';
+        }
 
         if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
             std::printf("\n");
@@ -278,6 +294,10 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
             std::printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E\n", iter, rms, etot - eold);
         }
+
+        if (ctx_.comm().rank() == 0)
+            output_residuals << rms << " " << (etot - eold) << '\n';
+
         /* check if the calculation has converged */
         if (std::abs(eold - etot) < energy_tol && rms < rms_tol) {
             if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {

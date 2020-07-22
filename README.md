@@ -212,13 +212,13 @@ make -j install
 You can also use Spack to install SIRIUS. For example:
 ```bash
 # install SIRIUS with CUDA support
-spack install sirius +cuda
+spack install sirius %gcc@8.4.0 +openmp +cuda ^cuda@10.2.89 ^openblas threads=openmp ^fftw ~mpi +openmp
 ```
 (see `spack info sirius` for all build options).
 
 To load SIRIUS you need to run:
 ```bash
-spack load -r sirius +cuda
+spack load sirius
 ```
 
 Please refer to [Spack documentation](https://spack.readthedocs.io/en/latest/) for more information on how to use Spack.
