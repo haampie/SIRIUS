@@ -1,64 +1,23 @@
-include:
-  - remote: 'https://gitlab.com/cscs-ci/recipes/-/raw/master/templates/v1/.cscs.yml'
-
 stages:
-  - build
   - allocate
   - test
   - deallocate
 
-
-# .build_common:
-#   extends: .dind
-#   stage: build
-#   only: ['master', 'develop', 'gitlab-ci']
-#   variables:
-#     GIT_SUBMODULE_STRATEGY: recursive
-#   before_script:
-#     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-#   script:
-#     - docker build -t "$IMAGE" --build-arg BUILD_BASE="$BUILD_BASE" --build-arg DEPLOY_BASE="$DEPLOY_BASE" --build-arg SPEC="$SPEC" -f ci/spack/deploy.Dockerfile --network=host .
-#     - docker push $IMAGE
-
-# cuda_10:
-#   extends: .build_common
-#   variables:
-#     SPEC: 'sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +cuda ^cuda@:10 ^openblas threads=openmp ^mpich'
-#     DEPLOY_BASE: ubuntu:18.04
-#     BUILD_BASE: stabbles/sirius-cuda-10
-#     IMAGE: $CI_REGISTRY_IMAGE/cuda_10:$CI_COMMIT_SHA
+default:
+  image: $IMAGE
 
 allocate cuda 10:
   stage: allocate
-  image: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
   extends: .daint_alloc
   variables:
-    SLURM_JOB_NUM_NODES: 1
-    SLURM_NTASKS: 1
-    SLURM_CPUS_PER_TASK: 12
-    SLURM_CONSTRAINT: gpu
-    SLURM_EXCLUSIVE: ''
-    OMP_NUM_THREADS: 2
-    MPICH_MAX_THREAD_SAFETY: multiple
-    ALLOCATION_NAME: sirius_cuda_10-$CI_PIPELINE_ID
     PULL_IMAGE: 'YES'
 
 .run_test_cuda_10_shared:
   extends: .daint
   stage: test
-  image: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
   script:
     - cd $TEST_FOLDER
-    - sirius.scf --test_against=output_ref.json --control.processing_unit=gpu
-  variables:
-    SLURM_JOB_NUM_NODES: 1
-    SLURM_NTASKS: 1
-    SLURM_CPUS_PER_TASK: 12
-    SLURM_CONSTRAINT: gpu
-    SLURM_EXCLUSIVE: ''
-    OMP_NUM_THREADS: 2
-    MPICH_MAX_THREAD_SAFETY: multiple
-    ALLOCATION_NAME: sirius_cuda_10-$CI_PIPELINE_ID
+    - sirius.scf $SIRIUS_FLAGS
 
 test_01_cuda_10:
   extends: .run_test_cuda_10_shared
@@ -152,7 +111,4 @@ test_18_cuda_10:
 
 deallocate cuda 10:
   stage: deallocate
-  image: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
   extends: .daint_dealloc
-  variables:
-    ALLOCATION_NAME: sirius_cuda_10-$CI_PIPELINE_ID
