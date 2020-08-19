@@ -45,56 +45,56 @@ gpu single:
     IMAGE: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
     SIRIUS_FLAGS: "--control.processing_unit=gpu --control.std_evp_solver_name=cusolver --control.gen_evp_solver_name=cusolver"
 
-gpu multi:
-  trigger:
-    include: ci/run.yml
-    strategy: depend
-  variables:
-    SLURM_TIMELIMIT: "20:00"
-    SLURM_JOB_NUM_NODES: 1
-    SLURM_CONSTRAINT: gpu
-    SLURM_EXCLUSIVE: ''
-    SLURM_NTASKS: 4
-    SLURM_CPUS_PER_TASK: 3
-    OMP_NUM_THREADS: 3
-    CRAY_CUDA_MPS: 1
-    MPICH_MAX_THREAD_SAFETY: multiple
-    ALLOCATION_NAME: sirius-gpu-multi-$CI_PIPELINE_ID
-    IMAGE: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
-    SIRIUS_FLAGS: "--control.processing_unit=gpu"
-    USE_MPI: 'YES'
+# gpu multi:
+#   trigger:
+#     include: ci/run.yml
+#     strategy: depend
+#   variables:
+#     SLURM_TIMELIMIT: "20:00"
+#     SLURM_JOB_NUM_NODES: 1
+#     SLURM_CONSTRAINT: gpu
+#     SLURM_EXCLUSIVE: ''
+#     SLURM_NTASKS: 4
+#     SLURM_CPUS_PER_TASK: 3
+#     OMP_NUM_THREADS: 3
+#     CRAY_CUDA_MPS: 1
+#     MPICH_MAX_THREAD_SAFETY: multiple
+#     ALLOCATION_NAME: sirius-gpu-multi-$CI_PIPELINE_ID
+#     IMAGE: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
+#     SIRIUS_FLAGS: "--control.processing_unit=gpu"
+#     USE_MPI: 'YES'
 
-cpu single:
-  trigger:
-    include: ci/run.yml
-    strategy: depend
-  variables:
-    SLURM_TIMELIMIT: "20:00"
-    SLURM_JOB_NUM_NODES: 1
-    SLURM_NTASKS: 1
-    SLURM_CPUS_PER_TASK: 12
-    OMP_NUM_THREADS: 12
-    SLURM_CONSTRAINT: mc
-    SLURM_EXCLUSIVE: ''
-    MPICH_MAX_THREAD_SAFETY: multiple
-    ALLOCATION_NAME: sirius-cpu-single-$CI_PIPELINE_ID
-    IMAGE: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
-    SIRIUS_FLAGS: "--control.processing_unit=cpu"
+# cpu single:
+#   trigger:
+#     include: ci/run.yml
+#     strategy: depend
+#   variables:
+#     SLURM_TIMELIMIT: "20:00"
+#     SLURM_JOB_NUM_NODES: 1
+#     SLURM_NTASKS: 1
+#     SLURM_CPUS_PER_TASK: 12
+#     OMP_NUM_THREADS: 12
+#     SLURM_CONSTRAINT: mc
+#     SLURM_EXCLUSIVE: ''
+#     MPICH_MAX_THREAD_SAFETY: multiple
+#     ALLOCATION_NAME: sirius-cpu-single-$CI_PIPELINE_ID
+#     IMAGE: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
+#     SIRIUS_FLAGS: "--control.processing_unit=cpu"
 
-cpu multi:
-  trigger:
-    include: ci/run.yml
-    strategy: depend
-  variables:
-    SLURM_TIMELIMIT: "20:00"
-    SLURM_JOB_NUM_NODES: 1
-    SLURM_NTASKS: 4
-    SLURM_CPUS_PER_TASK: 3
-    OMP_NUM_THREADS: 3
-    SLURM_CONSTRAINT: mc
-    SLURM_EXCLUSIVE: ''
-    MPICH_MAX_THREAD_SAFETY: multiple
-    ALLOCATION_NAME: sirius-cpu-multi-$CI_PIPELINE_ID
-    IMAGE: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
-    SIRIUS_FLAGS: "--control.processing_unit=cpu"
-    USE_MPI: 'YES'
+# cpu multi:
+#   trigger:
+#     include: ci/run.yml
+#     strategy: depend
+#   variables:
+#     SLURM_TIMELIMIT: "20:00"
+#     SLURM_JOB_NUM_NODES: 1
+#     SLURM_NTASKS: 4
+#     SLURM_CPUS_PER_TASK: 3
+#     OMP_NUM_THREADS: 3
+#     SLURM_CONSTRAINT: mc
+#     SLURM_EXCLUSIVE: ''
+#     MPICH_MAX_THREAD_SAFETY: multiple
+#     ALLOCATION_NAME: sirius-cpu-multi-$CI_PIPELINE_ID
+#     IMAGE: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
+#     SIRIUS_FLAGS: "--control.processing_unit=cpu"
+#     USE_MPI: 'YES'

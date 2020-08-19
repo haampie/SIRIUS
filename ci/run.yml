@@ -9,109 +9,109 @@ stages:
 default:
   image: $IMAGE
 
-allocate cuda 10:
+allocate:
   stage: allocate
   extends: .daint_alloc
   variables:
     PULL_IMAGE: 'YES'
 
-.run_test_cuda_10_shared:
+.run_common:
   extends: .daint
   stage: test
   script:
     - cd $TEST_FOLDER
     - sirius.scf --test_against=output_ref.json $SIRIUS_FLAGS
 
-test_01_cuda_10:
-  extends: .run_test_cuda_10_shared
+test 01:
+  extends: .run_common
   variables:
     TEST_FOLDER: /sources/verification/test01
 
-test_02_cuda_10:
-  extends: .run_test_cuda_10_shared
+test 02:
+  extends: .run_common
   variables:
     TEST_FOLDER: /sources/verification/test02
 
-test_03_cuda_10:
-  extends: .run_test_cuda_10_shared
+test 03:
+  extends: .run_common
   variables:
     TEST_FOLDER: /sources/verification/test03
 
-test_04_cuda_10:
-  extends: .run_test_cuda_10_shared
+test 04:
+  extends: .run_common
   variables:
     TEST_FOLDER: /sources/verification/test04
 
-test_05_cuda_10:
-  extends: .run_test_cuda_10_shared
+test 05:
+  extends: .run_common
   variables:
     TEST_FOLDER: /sources/verification/test05
 
-test_06_cuda_10:
-  extends: .run_test_cuda_10_shared
+test 06:
+  extends: .run_common
   variables:
     TEST_FOLDER: /sources/verification/test06
 
-test_07_cuda_10:
-  extends: .run_test_cuda_10_shared
+test 07:
+  extends: .run_common
   variables:
     TEST_FOLDER: /sources/verification/test07
 
-test_08_cuda_10:
-  extends: .run_test_cuda_10_shared
+test 08:
+  extends: .run_common
   variables:
     TEST_FOLDER: /sources/verification/test08
 
-test_09_cuda_10:
-  extends: .run_test_cuda_10_shared
+test 09:
+  extends: .run_common
   variables:
     TEST_FOLDER: /sources/verification/test09
 
-test_10_cuda_10:
-  extends: .run_test_cuda_10_shared
+test 10:
+  extends: .run_common
   variables:
     TEST_FOLDER: /sources/verification/test10
 
-test_11_cuda_10:
-  extends: .run_test_cuda_10_shared
+test 11:
+  extends: .run_common
   variables:
     TEST_FOLDER: /sources/verification/test11
 
-test_12_cuda_10:
-  extends: .run_test_cuda_10_shared
+test 12:
+  extends: .run_common
   variables:
     TEST_FOLDER: /sources/verification/test12
 
-test_13_cuda_10:
-  extends: .run_test_cuda_10_shared
+test 13:
+  extends: .run_common
   variables:
     TEST_FOLDER: /sources/verification/test13
 
-test_14_cuda_10:
-  extends: .run_test_cuda_10_shared
+test 14:
+  extends: .run_common
   variables:
     TEST_FOLDER: /sources/verification/test14
 
-test_15_cuda_10:
-  extends: .run_test_cuda_10_shared
+test 15:
+  extends: .run_common
   variables:
     TEST_FOLDER: /sources/verification/test15
 
-test_16_cuda_10:
-  extends: .run_test_cuda_10_shared
+test 16:
+  extends: .run_common
   variables:
     TEST_FOLDER: /sources/verification/test16
 
-test_17_cuda_10:
-  extends: .run_test_cuda_10_shared
+test 17:
+  extends: .run_common
   variables:
     TEST_FOLDER: /sources/verification/test17
 
-test_18_cuda_10:
-  extends: .run_test_cuda_10_shared
+test 18:
+  extends: .run_common
   variables:
     TEST_FOLDER: /sources/verification/test18
 
-deallocate cuda 10:
+deallocate:
   stage: deallocate
   extends: .daint_dealloc
