@@ -7,25 +7,25 @@ stages:
   - test
   - deallocate
 
-# .build_common:
-#   extends: .dind
-#   stage: build
-#   only: ['master', 'develop', 'gitlab-ci']
-#   variables:
-#     GIT_SUBMODULE_STRATEGY: recursive
-#   before_script:
-#     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-#   script:
-#     - docker build -t "$IMAGE" --build-arg BUILD_BASE="$BUILD_BASE" --build-arg DEPLOY_BASE="$DEPLOY_BASE" --build-arg SPEC="$SPEC" -f ci/spack/deploy.Dockerfile --network=host .
-#     - docker push $IMAGE
+.build_common:
+  extends: .dind
+  stage: build
+  only: ['master', 'develop', 'gitlab-ci']
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t "$IMAGE" --build-arg BUILD_BASE="$BUILD_BASE" --build-arg DEPLOY_BASE="$DEPLOY_BASE" --build-arg SPEC="$SPEC" -f ci/spack/deploy.Dockerfile --network=host .
+    - docker push $IMAGE
 
-# cuda_10:
-#   extends: .build_common
-#   variables:
-#     SPEC: 'sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +cuda ^cuda@:10 ^openblas threads=openmp ^mpich'
-#     DEPLOY_BASE: ubuntu:18.04
-#     BUILD_BASE: stabbles/sirius-cuda-10
-#     IMAGE: $CI_REGISTRY_IMAGE/cuda_10:$CI_COMMIT_SHA
+cuda_10.1:
+  extends: .build_common
+  variables:
+    SPEC: 'sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +cuda ^cuda@10.1.243 ^openblas threads=openmp ^mpich'
+    DEPLOY_BASE: ubuntu:18.04
+    BUILD_BASE: stabbles/sirius-cuda-10
+    IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
 
 gpu single:
   trigger:
@@ -42,7 +42,7 @@ gpu single:
     CRAY_CUDA_MPS: 1
     MPICH_MAX_THREAD_SAFETY: multiple
     ALLOCATION_NAME: sirius-gpu-single-$CI_PIPELINE_ID
-    IMAGE: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
+    IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
     SIRIUS_FLAGS: "--control.processing_unit=gpu --control.std_evp_solver_name=cusolver --control.gen_evp_solver_name=cusolver"
 
 # gpu multi:
