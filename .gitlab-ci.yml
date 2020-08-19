@@ -48,6 +48,7 @@ allocate cuda 10:
     SLURM_NTASKS: 1
     SLURM_CPUS_PER_TASK: 12
     SLURM_CONSTRAINT: gpu
+    SLURM_EXCLUSIVE: ''
     OMP_NUM_THREADS: 2
     MPICH_MAX_THREAD_SAFETY: multiple
     ALLOCATION_NAME: sirius_cuda_10-$CI_PIPELINE_ID
@@ -143,7 +144,7 @@ test_18_cuda_10:
     TEST_FOLDER: /sources/verification/test18
 
 deallocate cuda 10:
-  stage: dallocate
+  stage: deallocate
   image: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
   extends: .daint_dealloc
   variables:
