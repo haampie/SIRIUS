@@ -453,7 +453,10 @@ class Eigensolver_elpa : public Eigensolver
         if (error != ELPA_OK) {
             TERMINATE("can't set elpa threads");
         }
-        elpa_set_integer(handle, "gpu", 1, &error);
+
+        if (acc::num_devices() != 0) {
+            elpa_set_integer(handle, "gpu", 1, &error);
+        }
 
         if (stage_ == 1) {
             elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
@@ -510,7 +513,10 @@ class Eigensolver_elpa : public Eigensolver
         if (error != ELPA_OK) {
             TERMINATE("can't set elpa threads");
         }
-        elpa_set_integer(handle, "gpu", 1, &error);
+
+        if (acc::num_devices() != 0) {
+            elpa_set_integer(handle, "gpu", 1, &error);
+        }
 
         if (stage_ == 1) {
             elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
