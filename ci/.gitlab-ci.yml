@@ -30,7 +30,7 @@ stages:
 single process gpu:
   trigger:
     include: .run.yml
-  strategy: depend
+    strategy: depend
   variables:
     SLURM_TIMELIMIT: "20:00"
     SLURM_JOB_NUM_NODES: 1
