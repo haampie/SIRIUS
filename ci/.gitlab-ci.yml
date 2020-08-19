@@ -40,7 +40,7 @@ gpu single:
     SLURM_CONSTRAINT: gpu
     SLURM_EXCLUSIVE: ''
     MPICH_MAX_THREAD_SAFETY: multiple
-    ALLOCATION_NAME: sirius_cuda_10-$CI_PIPELINE_ID
+    ALLOCATION_NAME: sirius-gpu-single-$CI_PIPELINE_ID
     IMAGE: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
     SIRIUS_FLAGS: "--control.processing_unit=gpu --control.std_evp_solver_name=cusolver --control.gen_evp_solver_name=cusolver"
 
@@ -57,7 +57,7 @@ gpu multi:
     SLURM_CONSTRAINT: gpu
     SLURM_EXCLUSIVE: ''
     MPICH_MAX_THREAD_SAFETY: multiple
-    ALLOCATION_NAME: sirius_cuda_10-$CI_PIPELINE_ID
+    ALLOCATION_NAME: sirius-gpu-multi-$CI_PIPELINE_ID
     IMAGE: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
     SIRIUS_FLAGS: "--control.processing_unit=gpu"
 
@@ -74,7 +74,7 @@ cpu single:
     SLURM_CONSTRAINT: cpu
     SLURM_EXCLUSIVE: ''
     MPICH_MAX_THREAD_SAFETY: multiple
-    ALLOCATION_NAME: sirius_cuda_10-$CI_PIPELINE_ID
+    ALLOCATION_NAME: sirius-gpu-single-$CI_PIPELINE_ID
     IMAGE: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
     SIRIUS_FLAGS: "--control.processing_unit=cpu"
 
@@ -91,6 +91,6 @@ cpu multi:
     SLURM_CONSTRAINT: cpu
     SLURM_EXCLUSIVE: ''
     MPICH_MAX_THREAD_SAFETY: multiple
-    ALLOCATION_NAME: sirius_cuda_10-$CI_PIPELINE_ID
+    ALLOCATION_NAME: cpu-multi-$CI_PIPELINE_ID
     IMAGE: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
     SIRIUS_FLAGS: "--control.processing_unit=cpu"
