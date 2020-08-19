@@ -20,7 +20,8 @@ SHELL ["/bin/bash", "-c"]
 RUN spack --color=always -e ci dev-build --source-path /sources $SPEC
 
 # Bundle everything
-RUN . /opt/spack/share/spack/setup-env.sh && \
+RUN rm -rf /sources/.git /sources/examples && \
+    . /opt/spack/share/spack/setup-env.sh && \
     apt-get update -qq && \
     apt-get install -qq wget tar && \
     cd /root && \
