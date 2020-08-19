@@ -29,7 +29,7 @@ stages:
 
 single process gpu:
   trigger:
-    include: .run.yml
+    include: ci/.run.yml
     strategy: depend
   variables:
     SLURM_TIMELIMIT: "20:00"
