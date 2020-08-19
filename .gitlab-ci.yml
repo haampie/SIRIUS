@@ -14,13 +14,13 @@ stages:
   before_script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
-    - docker build -t "$IMAGE" --build-arg BUILD_IMAGE="$BUILD_IMAGE" --build-arg DEPLOY_IMAGE="$IMAGE" --build-arg SPEC="$SPEC" -f ci/spack/deploy.Dockerfile --network=host .
+    - docker build -t "$IMAGE" --build-arg BUILD_BASE="$BUILD_BASE" --build-arg DEPLOY_BASE="$DEPLOY_BASE" --build-arg SPEC="$SPEC" -f ci/spack/deploy.Dockerfile --network=host .
     - docker push $IMAGE
 
 cuda_10:
   extends: .build_common
   variables:
     SPEC: 'sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +cuda ^cuda@:10 ^openblas threads=openmp ^mpich'
-    DEPLOY_IMAGE: ubuntu:18.04
-    BUILD_IMAGE: stabbles/sirius-cuda-10
+    DEPLOY_BASE: ubuntu:18.04
+    BUILD_BASE: stabbles/sirius-cuda-10
     IMAGE: $CI_REGISTRY_IMAGE/cuda_10:$CI_COMMIT_SHA
