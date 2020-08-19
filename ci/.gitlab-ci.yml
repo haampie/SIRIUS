@@ -62,6 +62,7 @@ gpu multi:
     ALLOCATION_NAME: sirius-gpu-multi-$CI_PIPELINE_ID
     IMAGE: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
     SIRIUS_FLAGS: "--control.processing_unit=gpu"
+    USE_MPI: 'YES'
 
 cpu single:
   trigger:
@@ -96,3 +97,4 @@ cpu multi:
     ALLOCATION_NAME: sirius-cpu-multi-$CI_PIPELINE_ID
     IMAGE: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
     SIRIUS_FLAGS: "--control.processing_unit=cpu"
+    USE_MPI: 'YES'
