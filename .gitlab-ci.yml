@@ -33,8 +33,15 @@ allocate cuda 10:
   image: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
   extends: .daint_alloc
   variables:
-    PULL_IMAGE: 'YES'
+    SLURM_JOB_NUM_NODES: 1
+    SLURM_NTASKS: 1
+    SLURM_CPUS_PER_TASK: 12
+    SLURM_CONSTRAINT: gpu
+    SLURM_EXCLUSIVE: ''
+    OMP_NUM_THREADS: 2
+    MPICH_MAX_THREAD_SAFETY: multiple
     ALLOCATION_NAME: sirius_cuda_10-$CI_PIPELINE_ID
+    PULL_IMAGE: 'YES'
 
 .run_test_cuda_10_shared:
   extends: .daint
