@@ -25,6 +25,9 @@ stages:
 #     BUILD_BASE: stabbles/sirius-cuda-10
 #     IMAGE: $CI_REGISTRY_IMAGE/cuda_10:$CI_COMMIT_SHA
 
+variables:
+  PULL_IMAGE: 'YES'
+
 run_cuda_10:
   extends: .daint
   stage: test
