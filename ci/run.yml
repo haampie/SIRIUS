@@ -20,7 +20,7 @@ allocate cuda 10:
   stage: test
   script:
     - cd $TEST_FOLDER
-    - sirius.scf $SIRIUS_FLAGS
+    - sirius.scf --test_against=output_ref.json $SIRIUS_FLAGS
 
 test_01_cuda_10:
   extends: .run_test_cuda_10_shared
