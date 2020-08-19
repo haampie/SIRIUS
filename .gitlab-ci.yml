@@ -3,7 +3,10 @@ include:
 
 stages:
   - build
+  - allocate
   - test
+  - deallocate
+
 
 # .build_common:
 #   extends: .dind
@@ -25,20 +28,123 @@ stages:
 #     BUILD_BASE: stabbles/sirius-cuda-10
 #     IMAGE: $CI_REGISTRY_IMAGE/cuda_10:$CI_COMMIT_SHA
 
-variables:
-  PULL_IMAGE: 'YES'
+allocate cuda 10:
+  stage: allocate
+  image: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
+  extends: .daint_alloc
+  variables:
+    PULL_IMAGE: 'YES'
+    ALLOCATION_NAME: sirius_cuda_10-$CI_PIPELINE_ID
 
-run_cuda_10:
+.run_test_cuda_10_shared:
   extends: .daint
   stage: test
   image: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
   script:
-    - nproc
-    - cd /sources/verification/test01
+    - cd $TEST_FOLDER
     - sirius.scf --test_against=output_ref.json --control.processing_unit=gpu
   variables:
     SLURM_JOB_NUM_NODES: 1
     SLURM_NTASKS: 1
+    SLURM_CPUS_PER_TASK: 12
     SLURM_CONSTRAINT: gpu
     OMP_NUM_THREADS: 2
     MPICH_MAX_THREAD_SAFETY: multiple
+    ALLOCATION_NAME: sirius_cuda_10-$CI_PIPELINE_ID
+
+test_01_cuda_10:
+  extends: .run_test_cuda_10_shared
+  variables:
+    TEST_FOLDER: /sources/verification/test01
+
+test_02_cuda_10:
+  extends: .run_test_cuda_10_shared
+  variables:
+    TEST_FOLDER: /sources/verification/test02
+
+test_03_cuda_10:
+  extends: .run_test_cuda_10_shared
+  variables:
+    TEST_FOLDER: /sources/verification/test03
+
+test_04_cuda_10:
+  extends: .run_test_cuda_10_shared
+  variables:
+    TEST_FOLDER: /sources/verification/test04
+
+test_05_cuda_10:
+  extends: .run_test_cuda_10_shared
+  variables:
+    TEST_FOLDER: /sources/verification/test05
+
+test_06_cuda_10:
+  extends: .run_test_cuda_10_shared
+  variables:
+    TEST_FOLDER: /sources/verification/test06
+
+test_07_cuda_10:
+  extends: .run_test_cuda_10_shared
+  variables:
+    TEST_FOLDER: /sources/verification/test07
+
+test_08_cuda_10:
+  extends: .run_test_cuda_10_shared
+  variables:
+    TEST_FOLDER: /sources/verification/test08
+
+test_09_cuda_10:
+  extends: .run_test_cuda_10_shared
+  variables:
+    TEST_FOLDER: /sources/verification/test09
+
+test_10_cuda_10:
+  extends: .run_test_cuda_10_shared
+  variables:
+    TEST_FOLDER: /sources/verification/test10
+
+test_11_cuda_10:
+  extends: .run_test_cuda_10_shared
+  variables:
+    TEST_FOLDER: /sources/verification/test11
+
+test_12_cuda_10:
+  extends: .run_test_cuda_10_shared
+  variables:
+    TEST_FOLDER: /sources/verification/test12
+
+test_13_cuda_10:
+  extends: .run_test_cuda_10_shared
+  variables:
+    TEST_FOLDER: /sources/verification/test13
+
+test_14_cuda_10:
+  extends: .run_test_cuda_10_shared
+  variables:
+    TEST_FOLDER: /sources/verification/test14
+
+test_15_cuda_10:
+  extends: .run_test_cuda_10_shared
+  variables:
+    TEST_FOLDER: /sources/verification/test15
+
+test_16_cuda_10:
+  extends: .run_test_cuda_10_shared
+  variables:
+    TEST_FOLDER: /sources/verification/test16
+
+test_17_cuda_10:
+  extends: .run_test_cuda_10_shared
+  variables:
+    TEST_FOLDER: /sources/verification/test17
+
+test_18_cuda_10:
+  extends: .run_test_cuda_10_shared
+  variables:
+    TEST_FOLDER: /sources/verification/test18
+
+deallocate cuda 10:
+  stage: dallocate
+  image: registry.gitlab.com/cscs-ci/electronic-structure/sirius/cuda_10:501b5d1974174d98a4c4da0267ce28970caa5bee
+  extends: .daint_dealloc
+  variables:
+    ALLOCATION_NAME: sirius_cuda_10-$CI_PIPELINE_ID
