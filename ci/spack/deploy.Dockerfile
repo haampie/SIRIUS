@@ -1,10 +1,10 @@
 # The build image should have dependencies installed
-ARG BUILD_IMAGE=ubuntu:18.04
+ARG BUILD_BASE=ubuntu:18.04
 
 # This is stripped down deployment image
-ARG DEPLOY_IMAGE=ubuntu:18.04
+ARG DEPLOY_BASE=ubuntu:18.04
 
-FROM $BUILD_IMAGE as builder
+FROM $BUILD_BASE as builder
 
 # This is the version of sirius we want to install
 ARG SPEC
@@ -32,9 +32,10 @@ RUN . /opt/spack/share/spack/setup-env.sh && \
     libtree -d /root/sirius.bundle --chrpath `which sirius.scf`
 
 # Create a stripped down image
-FROM $DEPLOY_IMAGE
+FROM $DEPLOY_BASE
 
 COPY --from=builder /root/sirius.bundle /root/sirius.bundle
+COPY --from=builder /sources /sources
 
 # Make nvidia happy
 ENV NVIDIA_VISIBLE_DEVICES all
