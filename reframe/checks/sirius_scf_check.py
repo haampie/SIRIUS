@@ -5,8 +5,11 @@ import json
 import reframe as rfm
 import reframe.utility.sanity as sn
 
-test_folders = ['test01', 'test02', 'test03', 'test04', 'test05', 'test06', 'test07', 'test08',
-    'test09', 'test10', 'test11', 'test12', 'test13', 'test14', 'test15', 'test16', 'test17', 'test18']
+test_folders = [
+    'test01', 'test02', 'test03', 'test04', 'test05', 'test06', 'test07', 'test08',
+    'test09', 'test10', 'test11', 'test12', 'test13', 'test14', 'test15', 'test16',
+    'test17', 'test18'
+]
 
 @sn.sanity_function
 def load_json(filename):
@@ -51,12 +54,9 @@ class sirius_scf_base_test(rfm.RunOnlyRegressionTest):
         self.descr = 'SCF check'
         self.valid_systems = ['osx', 'daint', 'linux']
         self.valid_prog_environs = ['PrgEnv-gnu', 'PrgEnv-intel']
-
         self.num_tasks = num_ranks
+
         if self.current_system.name == 'daint':
-        #    self.modules = ['PrgEnv-intel', 'cray-hdf5', 'cudatoolkit', 'gcc', 'daint-gpu', 'EasyBuild-custom/cscs',
-        #                    'GSL/2.5-CrayIntel-18.08', 'libxc/4.2.3-CrayIntel-18.08', 'magma/2.4.0-CrayIntel-18.08-cuda-9.1',
-        #                    'spglib/1.12.0-CrayIntel-18.08']
             self.num_tasks_per_node = 1
             self.num_cpus_per_task = 12
             self.variables = {
@@ -87,7 +87,6 @@ class sirius_scf_serial(sirius_scf_base_test):
         super().__init__(1, test_folder)
         self.tags = {'serial'}
 
-
 @rfm.parameterized_test(*([test_folder] for test_folder in test_folders))
 class sirius_scf_serial_parallel_k(sirius_scf_base_test):
     def __init__(self, test_folder):
@@ -101,7 +100,6 @@ class sirius_scf_serial_parallel_band_22(sirius_scf_base_test):
         super().__init__(4, test_folder)
         self.tags = {'parallel_band'}
         self.executable_opts.append('--mpi_grid=2:2')
-
 
 @rfm.parameterized_test(*([test_folder] for test_folder in test_folders))
 class sirius_scf_serial_parallel_band_12(sirius_scf_base_test):
@@ -118,3 +116,10 @@ class sirius_scf_serial_parallel_band_21(sirius_scf_base_test):
         self.tags = {'parallel_band'}
         self.executable_opts.append('--mpi_grid=2:1')
 
+## Currently when testing in gitlab with containers, we shouldn't do the slurm scheduling -- so let's do it here.
+@rfm.parameterized_test(*([test_folder] for test_folder in test_folders))
+class sirius_scf_serial_parallel_band_22_self_scheduled(sirius_scf_base_test):
+    def __init__(self, test_folder):
+        super().__init__(1, test_folder)
+        self.tags = {'parallel_band_self_scheduled'}
+        self.executable_opts.append('--mpi_grid=2:2')
