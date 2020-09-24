@@ -585,13 +585,14 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                         sphi.copy_from(spsi, keep - num_locked, ispn, 0, ispn, num_locked);
                     }
 
-                    // Remove the lockable Ritz values from the vector
+                    // Remove locked Ritz values so indexing starts at unconverged eigenpairs
                     if (itso.locking_ && num_lockable > 0) {
                         for (int i = num_lockable; i < num_ritz; ++i) {
                             eval[i - num_lockable] = eval[i];
                         }
                     }
 
+                    // Remove the locked block from the projected matrix too.
                     hmlt_old.zero();
                     for (int i = 0; i < keep - num_locked; i++) {
                         hmlt_old.set(i, i, eval[i]);
