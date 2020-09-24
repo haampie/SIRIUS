@@ -388,6 +388,9 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
     PROFILE_START("sirius::Band::diag_pseudo_potential_davidson|iter");
     for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
 
+        /* converged vectors */
+        int num_locked = 0;
+
         sddk::mdarray<double, 1> eval(num_bands);
         sddk::mdarray<double, 1> eval_old(num_bands);
         eval_old = [](){return 1e10;};
@@ -398,7 +401,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             double tol = ctx_.iterative_solver_tolerance();
             double empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);
             /* if band is empty, decrease the tolerance */
-            if (std::abs(kp.band_occupancy(j__, ispn__)) < ctx_.min_occupancy() * ctx_.max_occupancy()) {
+            // note: j__ indexes the unconverged eigenpairs -- excluding locked ones.
+            if (std::abs(kp.band_occupancy(j__ + num_locked, ispn__)) < ctx_.min_occupancy() * ctx_.max_occupancy()) {
                 tol += empy_tol;
             }
             return std::abs(eval[j__] - eval_old[j__]) <= tol;
@@ -449,9 +453,6 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
         /* current subspace size */
         int N = num_bands;
-
-        /* converged vectors */
-        int num_locked = 0;
 
         /* number of residuals to add to the search subspace.
            the idea here is to expand the search subspace with
