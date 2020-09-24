@@ -276,6 +276,7 @@ residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N
             1000.0
         };
     } else {
+        std::cout << "Going for actual residuals!!\n";
         if (is_device_memory(mem_type__)) {
             eval__.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
         }
