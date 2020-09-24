@@ -166,7 +166,7 @@ normalized_preconditioned_residuals(sddk::memory_t mem_type__, sddk::spin_range 
     if (std::is_same<T, double>::value && res__.comm().rank() == 0 && num_unconverged != 0 && spins__() != 2) {
         if (is_device_memory(res__.preferred_memory_t())) {
 #if defined(__GPU)
-            make_real_g0_gpu(res__.pw_coeffs(spins__()).prime().at(sddk::memory_t::device), res__.pw_coeffs(spins__()).prime().ld(), n);
+            make_real_g0_gpu(res__.pw_coeffs(spins__()).prime().at(sddk::memory_t::device), res__.pw_coeffs(spins__()).prime().ld(), num_unconverged);
 #endif
         } else {
             for (int i = 0; i < num_unconverged; i++) {
@@ -207,17 +207,14 @@ residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N
     if (estimate_eval__) {
         // We lock the first so many consecutive vecs.
         int num_consecutive_locked = 0;
-        while (num_consecutive_locked < num_bands__ && is_converged__(num_consecutive_locked + num_locked, ispn__)) {
+        while (num_consecutive_locked < num_bands__ && is_converged__(num_consecutive_locked, ispn__)) {
             ++num_consecutive_locked;
         }
 
-        // Collect indices of unconverged eigenpairs. Note that locked eigenvectors
-        // are not (re)computed, but locked eigenvalues are still around, and is_converged__
-        // expects the true index of the eigenvalue, so we have to fix indexing here;
-        // eigenvector evec__[:, j] corresponds to eigenvalue eval__[j + num_locked]
+        // Collect indices of unconverged eigenpairs.
         std::vector<int> ev_idx;
         for (int j = 0; j < num_bands__; j++) {
-            if (!is_converged__(j + num_locked, ispn__)) {
+            if (!is_converged__(j, ispn__)) {
                 ev_idx.push_back(j);
             }
         }
@@ -237,7 +234,7 @@ residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N
 
         int num_rows_local = evec_tmp.num_rows_local();
         for (int j = 0; j < num_residuals; j++) {
-            eval_tmp[j] = eval__[ev_idx[j] + num_locked];
+            eval_tmp[j] = eval__[ev_idx[j]];
             if (evec__.blacs_grid().comm().size() == 1) {
                 /* do a local copy */
                 std::copy(&evec__(0, ev_idx[j]), &evec__(0, ev_idx[j]) + num_rows_local, &evec_tmp(0, j));
