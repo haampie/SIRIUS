@@ -200,15 +200,23 @@ residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N
     sddk::dmatrix<T>* evec_ptr{nullptr};
     sddk::mdarray<double, 1>* eval_ptr{nullptr};
 
+    // Total number of residuals to be computed.
     int num_residuals{0};
 
-    // When estimate_eval__ is true we only compute true residuals of unconverged eigenpairs
+    // Number of lockable eigenvectors
+    int num_consecutive_converged{0};
+
+    // Number of residuals that do not meet any convergence criterion
+    int num_unconverged{0};
+
+    // When estimate_eval__ is set we only compute true residuals of unconverged eigenpairs
     // where convergence is determined just on the change in the eigenvalues.
     if (estimate_eval__) {
-        // We lock the first so many consecutive vecs.
-        int num_consecutive_locked = 0;
-        while (num_consecutive_locked < num_bands__ && is_converged__(num_consecutive_locked, ispn__)) {
-            ++num_consecutive_locked;
+        // Locking is only based on the is_converged__ criterion, not on the actual
+        // residual norms. We could lock more by considering the residual norm criterion
+        // later, but since we're reordering eigenvectors too, this becomes messy.
+        while (num_consecutive_converged < num_bands__ && is_converged__(num_consecutive_converged, ispn__)) {
+            ++num_consecutive_converged;
         }
 
         // Collect indices of unconverged eigenpairs.
@@ -256,25 +264,6 @@ residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N
         if (is_device_memory(mem_type__)) {
             eval_tmp.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
         }
-
-        /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-        sddk::transform<T>(mem_type__, la_type__, ispn__, 
-                        {&hphi__, &ophi__}, num_locked, N__ - num_locked, 
-                        *evec_ptr, 0, 0, 
-                        {&hpsi__, &opsi__}, 0, num_residuals);
-
-        // num_unconverged is the total number of eigenpairs not converged from the num_residuals computed ones.
-        auto num_unconverged = normalized_preconditioned_residuals<T>(mem_type__, sddk::spin_range(ispn__), num_residuals, *eval_ptr, hpsi__, opsi__, res__,
-                                                                    h_diag__, o_diag__, norm_tolerance__, res_norm);
-
-        // we could consider locking more vecs here when num_unconverged != num_residuals,
-        // but residuals are reordered already, and we currently only lock vecs of the smallest eigenvalues,
-        // which normally occur first.
-        return {
-            num_consecutive_locked,
-            num_unconverged,
-            1000.0
-        };
     } else {
         if (is_device_memory(mem_type__)) {
             eval__.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
@@ -282,34 +271,35 @@ residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N
         evec_ptr = &evec__;
         eval_ptr = &eval__;
         num_residuals = num_bands__;
-
-        /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-        sddk::transform<T>(mem_type__, la_type__, ispn__, 
-                        {&hphi__, &ophi__}, num_locked, N__ - num_locked, 
-                        *evec_ptr, 0, 0, 
-                        {&hpsi__, &opsi__}, 0, num_residuals);
-
-        // num_unconverged is the total number of eigenpairs not converged from the num_residuals computed ones.
-        auto num_unconverged = normalized_preconditioned_residuals<T>(mem_type__, sddk::spin_range(ispn__), num_residuals, *eval_ptr, hpsi__, opsi__, res__,
-                                                                    h_diag__, o_diag__, norm_tolerance__, res_norm);
-
-        auto frobenius_norm = 0.0;
-        for (int i = 0; i < num_residuals; i++)
-            frobenius_norm += res_norm[i] * res_norm[i];
-        frobenius_norm = std::sqrt(frobenius_norm);
-
-        // Move forwards to the first eigenvec that has not yet converged
-        int num_consecutive_locked{0};
-        while (num_consecutive_locked < num_residuals && res_norm[num_consecutive_locked] <= norm_tolerance__) {
-            ++num_consecutive_locked;
-        }
-
-        return {
-            num_consecutive_locked,
-            num_unconverged,
-            frobenius_norm
-        };
     }
+
+    /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
+    sddk::transform<T>(mem_type__, la_type__, ispn__, 
+                    {&hphi__, &ophi__}, num_locked, N__ - num_locked, 
+                    *evec_ptr, 0, 0, 
+                    {&hpsi__, &opsi__}, 0, num_residuals);
+
+    num_unconverged = normalized_preconditioned_residuals<T>(mem_type__, sddk::spin_range(ispn__), num_residuals, *eval_ptr, hpsi__, opsi__, res__,
+                                                                h_diag__, o_diag__, norm_tolerance__, res_norm);
+
+    // In case we're not using the delta in eigenvalues as a convergence criterion,
+    // we lock eigenpairs using residual norms.
+    if (!estimate_eval__) {
+        while (num_consecutive_converged < num_residuals && res_norm[num_consecutive_converged] <= norm_tolerance__) {
+            ++num_consecutive_converged;
+        }
+    }
+
+    auto frobenius_norm = 0.0;
+    for (int i = 0; i < num_residuals; i++)
+        frobenius_norm += res_norm[i] * res_norm[i];
+    frobenius_norm = std::sqrt(frobenius_norm);
+
+    return {
+        num_consecutive_converged,
+        num_unconverged,
+        frobenius_norm
+    };
 }
 
 template residual_result
