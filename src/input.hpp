@@ -251,10 +251,10 @@ struct Iterative_solver_input
     int num_steps_{20};
 
     /// Size of the variational subspace is this number times the number of bands.
-    int subspace_size_{4};
+    int subspace_size_{2};
 
     /// Lock eigenvectors of the smallest eigenvalues when they have converged at restart
-    bool locking_{false};
+    bool locking_{true};
 
     /// Tolerance for the eigen-energy difference \f$ |\epsilon_i^{old} - \epsilon_i^{new} | \f$.
     /** This parameter is reduced during the SCF cycle to reach the high accuracy of the wave-functions. */
