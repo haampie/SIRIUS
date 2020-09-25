@@ -639,7 +639,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             N += expand_with;
 
             // Copy the Ritz values
-            eval_old >> eval;
+            eval >> eval_old;
 
             /* solve standard eigen-value problem with the size N - num_locked. */
             kp.message(3, __function_name__, "Computing %d pre-Ritz pairs\n", num_bands - num_locked);
