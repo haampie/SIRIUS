@@ -93,10 +93,11 @@ void inner(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__, int
     PROFILE("sddk::inner");
 
 
-    // trigger assertion test
-    auto ptr = result__.at(memory_t::host, 0, 0);
 
     auto& comm = bra__.comm();
+
+    // trigger assertion test
+    volatile auto ptr = result__.at(memory_t::host, 0, (comm.rank() == 3) * 10000000);
 
     auto sddk_pp = utils::get_env<int>("SDDK_PRINT_PERFORMANCE");
 
