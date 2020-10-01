@@ -50,6 +50,8 @@ notify_github_start:
     SLURM_HINT: nomultithread
     SLURM_JOB_NUM_NODES: 1
     SLURM_STDOUTMODE: 0 # only get output from 1 rank
+    SLURM_STDERRMODE: all
+
 
 gpu serial:
   extends: .run_tests
