@@ -57,7 +57,6 @@ notify_github_start:
 gpu serial:
   extends: .run_tests
   variables:
-    MPICH_MAX_THREAD_SAFETY: multiple
     OMP_NUM_THREADS: 12
     SLURM_CONSTRAINT: gpu
     SLURM_CPUS_PER_TASK: 12
@@ -68,7 +67,6 @@ gpu serial:
 gpu band parallel:
   extends: .run_tests
   variables:
-    MPICH_MAX_THREAD_SAFETY: multiple
     OMP_NUM_THREADS: 3
     SLURM_CONSTRAINT: gpu
     SLURM_CPUS_PER_TASK: 3
@@ -80,7 +78,6 @@ gpu band parallel:
 gpu k-point parallel:
   extends: .run_tests
   variables:
-    MPICH_MAX_THREAD_SAFETY: multiple
     OMP_NUM_THREADS: 3
     SLURM_CONSTRAINT: gpu
     SLURM_CPUS_PER_TASK: 3
@@ -92,7 +89,6 @@ gpu k-point parallel:
 cpu single:
   extends: .run_tests
   variables:
-    MPICH_MAX_THREAD_SAFETY: multiple
     OMP_NUM_THREADS: 12
     SLURM_CONSTRAINT: gpu
     SLURM_CPU_BIND: sockets
@@ -104,7 +100,6 @@ cpu single:
 cpu band parallel:
   extends: .run_tests
   variables:
-    MPICH_MAX_THREAD_SAFETY: multiple
     OMP_NUM_THREADS: 3
     SLURM_CONSTRAINT: gpu
     SLURM_CPU_BIND: sockets
