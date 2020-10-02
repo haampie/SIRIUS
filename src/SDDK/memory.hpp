@@ -35,7 +35,6 @@
 #include <array>
 #include <complex>
 #include <cassert>
-#include <mpi.h>
 #include "gpu/acc.hpp"
 
 namespace sddk {
@@ -667,7 +666,7 @@ void memory_pool_deleter::memory_pool_deleter_impl::free(void* ptr__)
             for (int i = 0; i < N; i++) {                                                                              \
                 std::fprintf(stderr, "dim[%i].size = %li\n", i, dims_[i].size());                                      \
             }                                                                                                          \
-            MPI_Abort(MPI_COMM_WORLD, 1);                                                                              \
+            raise(SIGABRT);                                                                                            \
         }                                                                                                              \
     }
 #endif
