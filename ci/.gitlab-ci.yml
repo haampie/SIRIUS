@@ -51,6 +51,7 @@ notify_github_start:
     SLURM_JOB_NUM_NODES: 1
     SLURM_STDOUTMODE: 0 # only get output from 1 rank
     SLURM_STDERRMODE: all
+    SLURM_UNBUFFEREDIO: ''
 
 
 gpu serial:
