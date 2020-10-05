@@ -666,6 +666,7 @@ void memory_pool_deleter::memory_pool_deleter_impl::free(void* ptr__)
             for (int i = 0; i < N; i++) {                                                                              \
                 std::fprintf(stderr, "dim[%i].size = %li\n", i, dims_[i].size());                                      \
             }                                                                                                          \
+            std::fflush(stderr);                                                                                       \
             raise(SIGABRT);                                                                                            \
         }                                                                                                              \
     }
