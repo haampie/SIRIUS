@@ -39,7 +39,14 @@ notify_github_start:
   extends: .daint
   stage: test
   # only: ['master', 'develop', 'staging', 'trying']
-  script: cd /sources/spack-build && $TEST_COMMAND
+  script:
+    - cd /sources/spack-build
+    - |
+      if [ "$SLURM_PROCID" == "0" ]; then
+        $TEST_COMMAND -V
+      else
+        $TEST_COMMAND --output-on-failure
+      fi
   image: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
   variables:
     CRAY_CUDA_MPS: 1
@@ -49,8 +56,6 @@ notify_github_start:
     SLURM_EXCLUSIVE: ''
     SLURM_HINT: nomultithread
     SLURM_JOB_NUM_NODES: 1
-    SLURM_STDOUTMODE: 0 # only get output from 1 rank
-    SLURM_STDERRMODE: all
     SLURM_UNBUFFEREDIO: ''
     SLURM_WAIT: 0
 
@@ -62,7 +67,7 @@ gpu serial:
     SLURM_CPUS_PER_TASK: 12
     SLURM_NTASKS: 1
     SLURM_TIMELIMIT: "20:00"
-    TEST_COMMAND: ctest -L gpu_serial -V
+    TEST_COMMAND: ctest -L gpu_serial
 
 gpu band parallel:
   extends: .run_tests
@@ -72,7 +77,7 @@ gpu band parallel:
     SLURM_CPUS_PER_TASK: 3
     SLURM_NTASKS: 4
     SLURM_TIMELIMIT: "20:00"
-    TEST_COMMAND: ctest -L gpu_band_parallel -V
+    TEST_COMMAND: ctest -L gpu_band_parallel
     USE_MPI: 'YES'
 
 gpu k-point parallel:
@@ -83,7 +88,7 @@ gpu k-point parallel:
     SLURM_CPUS_PER_TASK: 3
     SLURM_NTASKS: 4
     SLURM_TIMELIMIT: "20:00"
-    TEST_COMMAND: ctest -L gpu_k_point_parallel -V
+    TEST_COMMAND: ctest -L gpu_k_point_parallel
     USE_MPI: 'YES'
 
 cpu single:
@@ -95,7 +100,7 @@ cpu single:
     SLURM_CPUS_PER_TASK: 12
     SLURM_NTASKS: 1
     SLURM_TIMELIMIT: "20:00"
-    TEST_COMMAND: ctest -L cpu_serial -V
+    TEST_COMMAND: ctest -L cpu_serial
 
 cpu band parallel:
   extends: .run_tests
@@ -106,7 +111,7 @@ cpu band parallel:
     SLURM_CPUS_PER_TASK: 3
     SLURM_NTASKS: 4
     SLURM_TIMELIMIT: "20:00"
-    TEST_COMMAND: ctest -L cpu_band_parallel -V
+    TEST_COMMAND: ctest -L cpu_band_parallel
     USE_MPI: 'YES'
 
 notify_github_success:
