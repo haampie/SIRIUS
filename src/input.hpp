@@ -254,7 +254,7 @@ struct Iterative_solver_input
     int subspace_size_{2};
 
     /// Lock eigenvectors of the smallest eigenvalues when they have converged at restart
-    bool locking_{true};
+    bool locking_{false};
 
     /// Tolerance for the eigen-energy difference \f$ |\epsilon_i^{old} - \epsilon_i^{new} | \f$.
     /** This parameter is reduced during the SCF cycle to reach the high accuracy of the wave-functions. */
