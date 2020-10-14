@@ -1,4 +1,5 @@
 #include "utils/profiler.hpp"
+#include "utils/eigenproblem_stats.hpp"
 #include <sirius.hpp>
 #include "filesystem.hpp"
 #include <utils/json.hpp>
@@ -240,6 +241,11 @@ double ground_state(Simulation_context& ctx,
 
     /* wait for all */
     ctx.comm().barrier();
+
+    if (ctx.comm().rank() == 0) {
+        std::ofstream ofs{"eigenproblem_stats", std::ofstream::out | std::ofstream::trunc};
+        ofs << utils::eigenproblem_stats{} << '\n';
+    }
 
     return dft.total_energy();
 }

@@ -59,6 +59,7 @@ set(_SOURSES
   "utils/utils.cpp"
   "utils/rt_graph.cpp"
   "utils/profiler.cpp"
+  "utils/eigenproblem_stats.cpp"
   "SDDK/wf_inner.cpp"
   "SDDK/wf_ortho.cpp"
   "SDDK/wf_trans.cpp"

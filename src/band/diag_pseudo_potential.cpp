@@ -26,6 +26,7 @@
 #include "residuals.hpp"
 #include "potential/potential.hpp"
 #include "utils/profiler.hpp"
+#include "utils/eigenproblem_stats.hpp"
 
 #if defined(__GPU) && defined(__CUDA)
 #include "gpu/acc.hpp"
@@ -638,6 +639,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
             /* solve standard eigen-value problem with the size N - num_locked. */
             kp.message(3, __function_name__, "Computing %d pre-Ritz pairs\n", num_bands - num_locked);
+            utils::eigenproblem_stats::stats.push_back({N - num_locked, num_bands - num_locked, num_unconverged});
             if (std_solver.solve(N - num_locked, num_bands - num_locked, hmlt, &eval[0], evec)) {
                 std::stringstream s;
                 s << "error in diagonalization";
