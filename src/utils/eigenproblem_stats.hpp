@@ -10,6 +10,7 @@ struct eigenproblem_stat {
     int problem_size;
     int num_eigenpairs_computed;
     int num_unconverged;
+    int num_locked;
 };
 
 class eigenproblem_stats {
