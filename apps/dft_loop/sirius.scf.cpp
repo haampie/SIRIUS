@@ -243,8 +243,8 @@ double ground_state(Simulation_context& ctx,
     ctx.comm().barrier();
 
     if (ctx.comm().rank() == 0) {
-        std::ofstream ofs{"eigenproblem_stats", std::ofstream::out | std::ofstream::trunc};
-        ofs << utils::eigenproblem_stats{} << '\n';
+        std::ofstream ofs{"davidson_stats", std::ofstream::out | std::ofstream::trunc};
+        ofs << utils::davidson_stats{} << '\n';
     }
 
     return dft.total_energy();

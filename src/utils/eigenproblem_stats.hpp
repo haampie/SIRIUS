@@ -13,12 +13,17 @@ struct eigenproblem_stat {
     int num_locked;
 };
 
-class eigenproblem_stats {
-public:
-    static std::vector<eigenproblem_stat> stats;
+struct orthogonalization_stats {
+    std::vector<double> cholesky_diag;
 };
 
-std::ostream &operator<<(std::ostream &os, eigenproblem_stats const &stats);
+class davidson_stats {
+public:
+    static std::vector<eigenproblem_stat> eig_stats;
+    static std::vector<orthogonalization_stats> ortho_stats;
+};
+
+std::ostream &operator<<(std::ostream &os, davidson_stats const &stats);
 
 }
 

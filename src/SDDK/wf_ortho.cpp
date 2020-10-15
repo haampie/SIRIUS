@@ -27,6 +27,7 @@
 #include "wf_inner.hpp"
 #include "wf_trans.hpp"
 #include "utils/profiler.hpp"
+#include "utils/eigenproblem_stats.hpp"
 #include "linalg/eigensolver.hpp"
 
 namespace sddk {
@@ -186,10 +187,20 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
                   << "idx_ket:" << idx_ket__;
                 TERMINATE(s);
             }
+
+            {
+                std::vector<double> stats(n__);
+                for (int i = 0; i < n__; ++i) {
+                    stats[i] = std::abs(o__(i, i));
+                }
+                utils::davidson_stats::ortho_stats.push_back({std::move(stats)});
+            }
+
             /* inversion of triangular matrix */
             if (linalg(linalg_t::lapack).trtri(n__, &o__(0, 0), o__.ld())) {
                 TERMINATE("error in inversion");
             }
+
             if (is_device_memory(mem__)) {
                 acc::copyin(o__.at(memory_t::device), o__.ld(), o__.at(memory_t::host), o__.ld(), n__, n__);
             }
