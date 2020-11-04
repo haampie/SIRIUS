@@ -75,7 +75,9 @@ class Broyden1 : public Mixer<FUNCS...>
 
         this->history_size_ = static_cast<int>(std::min(this->history_size_, this->max_history_ - 1));
 
-        bool should_restart = this->step_ > 1 && this->rmse_history_[idx_step_prev] < 0.5 * this->rmse_history_[idx_step];
+        bool full = this->history_size_ == (this->max_history_ - 1);
+        bool regression = this->rmse_history_[idx_step_prev] < 0.5 * this->rmse_history_[idx_step];
+        bool should_restart = full && regression;
 
         if (this->step_ > 0) {
             std::printf("Rank %d. RMSE ratio = %1.4f\n", Communicator::world().rank(), this->rmse_history_[idx_step_prev] / this->rmse_history_[idx_step]);
@@ -130,22 +132,13 @@ class Broyden1 : public Mixer<FUNCS...>
                 }
             }
 
-            /* invert matrix */
-            sddk::linalg(sddk::linalg_t::lapack).syinv(this->history_size_, S);
-            /* restore lower triangular part */
-            for (int j1 = 0; j1 < this->history_size_; j1++) {
-                for (int j2 = 0; j2 < j1; j2++) {
-                    S(j1, j2) = S(j2, j1);
-                }
-            }
-
             if (Communicator::world().rank() == 0) {
                 std::stringstream ss;
                 ss.precision(std::numeric_limits<double>::max_digits10);
 
                 ss << "\n\nGram matrix dF' * dF\n";
-                for (int j1 = 0; j1 < this->history_size_; j1++) {
-                    for (int j2 = 0; j2 < this->history_size_; j2++) {
+                for (int j1 = 0; j1 < static_cast<int>(this->history_size_); j1++) {
+                    for (int j2 = 0; j2 < static_cast<int>(this->history_size_); j2++) {
                         ss << std::setw(18) << S(j2, j1) << ' ';
                     }
                     ss << '\n';
@@ -153,6 +146,15 @@ class Broyden1 : public Mixer<FUNCS...>
                 ss << '\n';
 
                 std::cout << ss.str();
+            }
+
+            /* invert matrix */
+            sddk::linalg(sddk::linalg_t::lapack).syinv(this->history_size_, S);
+            /* restore lower triangular part */
+            for (int j1 = 0; j1 < this->history_size_; j1++) {
+                for (int j2 = 0; j2 < j1; j2++) {
+                    S(j1, j2) = S(j2, j1);
+                }
             }
 
             sddk::mdarray<double, 1> c(this->history_size_);
