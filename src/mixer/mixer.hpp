@@ -116,6 +116,7 @@ struct InnerProduct
             /* compute inner product */
             auto v = std::get<FUNC_REVERSE_INDEX>(function_prop)
                           .inner(*std::get<FUNC_REVERSE_INDEX>(x), *std::get<FUNC_REVERSE_INDEX>(y));
+            std::cout << "\ninner product partial result index " << FUNC_REVERSE_INDEX << ": " << v << "\n\n";
             /* normalize if necessary */
             if (normalize) {
                 auto sx = std::get<FUNC_REVERSE_INDEX>(function_prop).size(*std::get<FUNC_REVERSE_INDEX>(x));
@@ -140,6 +141,7 @@ struct InnerProduct<0, normalize, FUNCS...>
     {
         if (std::get<0>(x) && std::get<0>(y)) {
             auto v = std::get<0>(function_prop).inner(*std::get<0>(x), *std::get<0>(y));
+            std::cout << "\ninner product partial result index 0: " << v << "\n\n";
             if (normalize) {
                 auto sx = std::get<0>(function_prop).size(*std::get<0>(x));
                 auto sy = std::get<0>(function_prop).size(*std::get<0>(y));

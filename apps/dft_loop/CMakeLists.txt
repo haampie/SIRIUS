@@ -8,8 +8,8 @@ set(SIRIUS_SCF_LABELS gpu_serial gpu_band_parallel gpu_k_point_parallel cpu_seri
 set(SIRIUS_SCF_FLAGS_gpu_serial           --control.processing_unit=gpu --control.std_evp_solver_name=cusolver --control.gen_evp_solver_name=cusolver)
 set(SIRIUS_SCF_FLAGS_gpu_band_parallel    --control.processing_unit=gpu --control.mpi_grid_dims=2:2 --control.std_evp_solver_name=scalapack --control.gen_evp_solver_name=scalapack)
 set(SIRIUS_SCF_FLAGS_gpu_k_point_parallel --control.processing_unit=gpu --control.std_evp_solver_name=cusolver --control.gen_evp_solver_name=cusolver)
-set(SIRIUS_SCF_FLAGS_cpu_serial           --control.processing_unit=cpu)
-set(SIRIUS_SCF_FLAGS_cpu_band_parallel    --control.processing_unit=cpu --control.mpi_grid_dims=2:2 --control.std_evp_solver_name=scalapack --control.gen_evp_solver_name=scalapack)
+set(SIRIUS_SCF_FLAGS_cpu_serial           --control.processing_unit=cpu --mixer.type=stable_anderson)
+set(SIRIUS_SCF_FLAGS_cpu_band_parallel    --control.processing_unit=cpu --mixer.type=stable_anderson --control.mpi_grid_dims=2:2 --control.std_evp_solver_name=scalapack --control.gen_evp_solver_name=scalapack)
 
 # todo: Add OMP_NUM_THREADS + srun / mpiexec flags here too?
 

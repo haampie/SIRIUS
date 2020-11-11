@@ -1395,6 +1395,8 @@ void Simulation_context::init_step_function()
     vit *= (unit_cell().omega() / fft_grid().num_points());
     Communicator(spfft().communicator()).allreduce(&vit, 1);
 
+    std::cout << "vit = " << vit << ". unit_cell().volume_it() = " << unit_cell().volume_it() << '\n';
+
     if (std::abs(vit - unit_cell().volume_it()) > 1e-10) {
         std::stringstream s;
         s << "step function gives a wrong volume for IT region" << std::endl

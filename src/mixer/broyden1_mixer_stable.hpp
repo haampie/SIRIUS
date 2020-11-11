@@ -34,6 +34,7 @@
 #include <exception>
 #include <cmath>
 #include <numeric>
+#include <iomanip>
 
 #include "SDDK/memory.hpp"
 #include "mixer/mixer.hpp"
@@ -114,10 +115,51 @@ class Broyden1Stable : public Mixer<FUNCS...>
                 this->axpy(-sz, this->residual_history_[j], this->residual_history_[idx_step_prev]);
             }
 
+            // check orthogonality before resizing idx_step_prev.
+            {
+                sddk::mdarray<double, 2> dFdF(history_size, history_size);
+                for (int row = 0; row < history_size; ++row) {
+                    for (int col = 0; col < history_size; ++col) {
+                        dFdF(row, col) = this->template inner_product<normalize>(
+                            this->residual_history_[this->idx_hist(this->step_ - col - 1)],
+                            this->residual_history_[this->idx_hist(this->step_ - row - 1)]
+                        );
+                    }
+                }
+
+                std::cerr << "\nGram matrix dF'dF:\n";
+                for (int row = 0; row < history_size; ++row) {
+                    for (int col = 0; col < history_size; ++col) {
+                        std::cerr << std::setw(25) << dFdF(row, col);
+                    }
+                    std::cerr << '\n';
+                }
+            }
+
+            if (this->template inner_product<normalize>(this->residual_history_[idx_step_prev], this->residual_history_[idx_step_prev]) < 0) {
+                std::cerr << "negative inner product\n";
+            }
+
             // normalize the new residual difference vec itself
+            std::cerr << "self inner product start\n";
             auto sz = std::sqrt(this->template inner_product<normalize>(this->residual_history_[idx_step_prev], this->residual_history_[idx_step_prev]));
+            std::cerr << "self inner product = " << sz << '\n';
             this->R_(history_size - 1, history_size - 1) = sz;
             this->scale(1.0 / sz, this->residual_history_[idx_step_prev]);
+
+            // Show what R looks like
+            {
+                std::cerr.precision(std::numeric_limits<double>::digits10);
+                std::cerr << "\nR factor:\n";
+
+                for (int row = 0; row < history_size; ++row) {
+                    for (int col = 0; col < history_size; ++col) {
+                        std::cerr << std::setw(30) << this->R_(row, col);
+                    }
+                    std::cerr << '\n';
+                }
+                std::cerr << '\n';
+            }
 
             // Now do the Anderson iteration bit
 
