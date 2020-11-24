@@ -25,6 +25,9 @@
 #include "dft_ground_state.hpp"
 #include "utils/profiler.hpp"
 
+#include <array>
+#include "mixer/mixer_functions.hpp"
+
 namespace sirius {
 
 void DFT_ground_state::initial_state()
@@ -196,6 +199,23 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
 
     ctx_.iterative_solver_tolerance(initial_tolerance);
 
+    auto periodic_function_linalg = mixer::periodic_function_property();
+
+    Periodic_function<double> hartree_plus_xc{ctx_, ctx_.lmmax_rho()};
+    std::array<Periodic_function<double>, 4> density_diff {
+        {ctx_, ctx_.lmmax_rho()},
+        {ctx_, ctx_.lmmax_rho()},
+        {ctx_, ctx_.lmmax_rho()},
+        {ctx_, ctx_.lmmax_rho()}
+    };
+
+    periodic_function_linalg.copy(density_.component(0), density_diff[0]);
+    for (int i = 1; i < 4; ++i) {
+        periodic_function_linalg.copy(density_.component(i), density_diff[static_cast<size_t>(i)]);
+    }
+
+    ctx_.iterative_solver_tolerance(1e-10);
+
     for (int iter = 0; iter < num_dft_iter; iter++) {
         PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
 
@@ -242,8 +262,22 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         /* transform potential to real space after symmetrization */
         potential_.fft_transform(1);
 
+        periodic_function_linalg.copy(potential_.hartree_potential(), hartree_plus_xc);
+        periodic_function_linalg.axpy(1.0, potential_.xc_potential(), hartree_plus_xc);
+
+        func_prop.axpy(-1.0, density_.component(0), *density_diff[0]);
+
+        if (ctx_.num_spins() == 2) {
+            for (int i = 1; i < 4; ++i) {
+                func_prop.axpy(-1.0, density_.component(i), *density_diff[static_cast<size_t>(i)]);
+            }
+        }
+
+
+        auto descf = -sirius::inner(*density_diff[0], hartree_plus_xc);
+
         /* compute new total energy for a new density */
-        double etot = total_energy();
+        double etot = total_energy() + descf;
 
         etot_hist.push_back(etot);
 
