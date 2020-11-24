@@ -130,6 +130,18 @@ class Anderson : public Mixer<FUNCS...>
                 );
             }
 
+            // Add some regularization
+            {
+                double trace = 0;
+                for (int i = 0; i < history_size; ++i)
+                    trace += this->S_(i, i);
+
+                trace /= history_size;
+
+                for (int i = 0; i < history_size; ++i)
+                    this->S_(i, i) += 0.1 * trace;
+            }
+
             // Make a copy because factorizing destroys the matrix.
             for (int i = 0; i < history_size; ++i)
                 for (int j = 0; j < history_size; ++j)
