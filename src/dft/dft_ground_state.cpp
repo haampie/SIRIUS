@@ -202,22 +202,21 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
     auto periodic_function_linalg = mixer::periodic_function_property();
 
     Periodic_function<double> hartree_plus_xc{ctx_, ctx_.lmmax_rho()};
-    std::array<Periodic_function<double>, 4> density_diff {
-        {ctx_, ctx_.lmmax_rho()},
-        {ctx_, ctx_.lmmax_rho()},
-        {ctx_, ctx_.lmmax_rho()},
-        {ctx_, ctx_.lmmax_rho()}
-    };
-
-    periodic_function_linalg.copy(density_.component(0), density_diff[0]);
-    for (int i = 1; i < 4; ++i) {
-        periodic_function_linalg.copy(density_.component(i), density_diff[static_cast<size_t>(i)]);
+    Periodic_function<double> density_scalar_diff{ctx_, ctx_.lmmax_rho()};
+    std::vector<Periodic_function<double>> density_vector_diff;
+    for (int i = 0; i < ctx_.num_mag_dims(); ++i) {
+        density_vector_diff.emplace_back(ctx_, ctx_.lmmax_rho());
     }
 
-    ctx_.iterative_solver_tolerance(1e-10);
+    ctx_.iterative_solver_tolerance(1e-6);
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
         PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
+
+        periodic_function_linalg.copy(density_.scalar(), density_scalar_diff);
+        for (int i = 0; i < ctx_.num_mag_dims(); ++i) {
+            periodic_function_linalg.copy(density_.magnetization(i), density_vector_diff[static_cast<size_>(i));
+        }
 
         if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
             std::printf("\n");
@@ -264,20 +263,28 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
 
         periodic_function_linalg.copy(potential_.hartree_potential(), hartree_plus_xc);
         periodic_function_linalg.axpy(1.0, potential_.xc_potential(), hartree_plus_xc);
+        periodic_function_linalg.axpy(-1.0, density_.component(0), density_scalar_diff);
 
-        func_prop.axpy(-1.0, density_.component(0), *density_diff[0]);
-
-        if (ctx_.num_spins() == 2) {
-            for (int i = 1; i < 4; ++i) {
-                func_prop.axpy(-1.0, density_.component(i), *density_diff[static_cast<size_t>(i)]);
-            }
+        for (int i = 0; i < ctx_.num_mag_dims(); ++i) {
+            periodic_function_linalg.axpy(-1.0, density_.magnetization(i), density_vector_diff[static_cast<size_t>(i)]);
         }
 
+        auto descf = [&]() {
+            if (ctx_.num_spins() == 2) {
+                double some_stuff{0};
+                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                    some_stuff += sirius::inner(density_vector_diff[static_cast<size_t>(j)], potential_.effective_magnetic_field(j));
+                }
+                return -some_stuff;
+            } else {
+                return -sirius::inner(density_scalar_diff, hartree_plus_xc);
+            }
+        }();
 
-        auto descf = -sirius::inner(*density_diff[0], hartree_plus_xc);
+        std::cout << std::setprecision(std::numeric_limits<double>::digits10) << "DESCF VALUE = " << descf << '\n';
 
         /* compute new total energy for a new density */
-        double etot = total_energy() + descf;
+        double etot = total_energy(); // + descf;
 
         etot_hist.push_back(etot);
 

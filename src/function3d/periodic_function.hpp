@@ -105,6 +105,8 @@ class Periodic_function : public Smooth_periodic_function<T>
       this->allocate_mt(allocate_global__);
     }
 
+    Periodic_function(Periodic_function<T>&& src__) = default;
+
     /// Allocate memory for muffin-tin part.
     void allocate_mt(bool allocate_global__)
     {
