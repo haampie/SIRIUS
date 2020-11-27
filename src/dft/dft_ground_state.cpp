@@ -202,20 +202,15 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
     auto periodic_function_linalg = mixer::periodic_function_property();
 
     Periodic_function<double> hartree_plus_xc{ctx_, ctx_.lmmax_rho()};
-    Periodic_function<double> density_scalar_diff{ctx_, ctx_.lmmax_rho()};
-    std::vector<Periodic_function<double>> density_vector_diff;
-    for (int i = 0; i < ctx_.num_mag_dims(); ++i) {
-        density_vector_diff.emplace_back(ctx_, ctx_.lmmax_rho());
-    }
 
-    ctx_.iterative_solver_tolerance(1e-6);
+    Field4D density_diff{ctx_, ctx_.lmmax_rho()};
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
         PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
 
-        periodic_function_linalg.copy(density_.scalar(), density_scalar_diff);
+        periodic_function_linalg.copy(density_.scalar(), density_diff.scalar());
         for (int i = 0; i < ctx_.num_mag_dims(); ++i) {
-            periodic_function_linalg.copy(density_.magnetization(i), density_vector_diff[static_cast<size_>(i));
+            periodic_function_linalg.copy(density_.magnetization(i), density_diff.vector(i));
         }
 
         if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
@@ -235,12 +230,14 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         /* mix density */
         rms = density_.mix();
 
-        double old_tol = ctx_.iterative_solver_tolerance();
-        /* estimate new tolerance of iterative solver */
-        double tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms * rms / std::max(1.0, unit_cell_.num_electrons()), old_tol);
-        tol = std::max(ctx_.settings().itsol_tol_min_, tol);
         /* set new tolerance of iterative solver */
-        ctx_.iterative_solver_tolerance(tol);
+        ctx_.iterative_solver_tolerance(std::max(
+            ctx_.settings().itsol_tol_min_,
+            std::min(
+                ctx_.settings().itsol_tol_scale_[0] * rms * rms / std::max(1.0, unit_cell_.num_electrons()),
+                ctx_.settings().itsol_tol_scale_[1] * ctx_.iterative_solver_tolerance()
+            )
+        ));
 
         /* check number of electrons */
         density_.check_num_electrons();
@@ -263,21 +260,22 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
 
         periodic_function_linalg.copy(potential_.hartree_potential(), hartree_plus_xc);
         periodic_function_linalg.axpy(1.0, potential_.xc_potential(), hartree_plus_xc);
-        periodic_function_linalg.axpy(-1.0, density_.component(0), density_scalar_diff);
+
+        periodic_function_linalg.axpy(-1.0, density_.scalar(), density_diff.scalar());
 
         for (int i = 0; i < ctx_.num_mag_dims(); ++i) {
-            periodic_function_linalg.axpy(-1.0, density_.magnetization(i), density_vector_diff[static_cast<size_t>(i)]);
+            periodic_function_linalg.axpy(-1.0, density_.magnetization(i), density_diff.vector(i));
         }
 
         auto descf = [&]() {
             if (ctx_.num_spins() == 2) {
                 double some_stuff{0};
                 for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                    some_stuff += sirius::inner(density_vector_diff[static_cast<size_t>(j)], potential_.effective_magnetic_field(j));
+                    some_stuff += sirius::inner(density_diff.vector(j), potential_.effective_magnetic_field(j));
                 }
                 return -some_stuff;
             } else {
-                return -sirius::inner(density_scalar_diff, hartree_plus_xc);
+                return -sirius::inner(density_diff.scalar(), hartree_plus_xc);
             }
         }();
 
