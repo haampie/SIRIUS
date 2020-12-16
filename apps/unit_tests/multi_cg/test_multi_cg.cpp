@@ -112,7 +112,7 @@ int main() {
 
     auto tol = 1e-10;
 
-    auto resnorms = sirius::cg::block_cg(
+    auto resnorms = sirius::cg::multi_cg(
         A, P,
         X, R, U, C,
         100, tol
