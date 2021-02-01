@@ -31,6 +31,7 @@ namespace sddk {
 template <typename T>
 class dmatrix;
 class Wave_functions;
+class spin_range;
 };
 
 struct residual_result {
@@ -89,4 +90,8 @@ residual_result residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, 
                           sddk::Wave_functions& hpsi__, sddk::Wave_functions& opsi__, sddk::Wave_functions& res__,
                           sddk::mdarray<double, 2> const& h_diag__, sddk::mdarray<double, 2> const& o_diag__,
                           bool estimate_eval__, double norm_tolerance__, std::function<bool(int, int)> is_converged__);
+
+void
+compute_residuals(sddk::memory_t mem_type__, sddk::spin_range spins__, int num_bands__, sddk::mdarray<double, 1>& eval__,
+                  sddk::Wave_functions& hpsi__, sddk::Wave_functions& opsi__, sddk::Wave_functions& res__);
 }

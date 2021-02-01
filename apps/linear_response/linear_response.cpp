@@ -5,6 +5,10 @@
 #include <cfenv>
 #include <fenv.h>
 
+#include "band/residuals.hpp"
+
+#include "multi_cg/multi_cg.hpp"
+
 using namespace sirius;
 using json = nlohmann::json;
 
@@ -71,39 +75,233 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string fname__,
     return ctx_ptr;
 }
 
+struct Wave_functions_wrap {
+    Wave_functions *x;
 
-double ground_state(Simulation_context& ctx,
+    typedef double_complex value_type;
+
+    void fill(double_complex val) {
+        x->pw_coeffs(0).prime() = [=](){
+            return val;
+        };
+    }
+
+    int cols() const {
+        return x->num_wf();
+    }
+
+    void block_dot(Wave_functions_wrap const &y, std::vector<double_complex> &rhos, size_t num_unconverged) {
+        auto result = x->dot(device_t::CPU, sddk::spin_range(0), *y.x, static_cast<int>(num_unconverged));
+        for (int i = 0; i < static_cast<int>(num_unconverged); ++i)
+            rhos[i] = result(i);
+    }
+
+    void repack(std::vector<size_t> const &ids) {
+        size_t j = 0;
+        for (auto i : ids) {
+            if (j != i) {
+                x->copy_from(*x, 1, 0, i, 0, j);
+            }
+
+            ++j;
+        }
+    }
+
+    void copy(Wave_functions_wrap const &y, size_t num) {
+        x->copy_from(*y.x, static_cast<int>(num), 0, 0, 0, 0);
+    }
+
+    void block_xpby(Wave_functions_wrap const &y, std::vector<double_complex> const &alphas, size_t num) {
+        x->xpby(device_t::CPU, sddk::spin_range(0), *y.x, alphas, static_cast<int>(num));
+    }
+
+    void block_axpy_scatter(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, std::vector<size_t> const &ids) {
+        x->axpy_scatter(device_t::CPU, sddk::spin_range(0), alphas, *y.x, ids);
+    }
+
+    void block_axpy(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, size_t num) {
+        x->axpy(device_t::CPU, sddk::spin_range(0), alphas, *y.x, static_cast<int>(num));
+    }
+};
+
+struct identity_preconditioner {
+    size_t num_active;
+
+    void apply(Wave_functions_wrap &x, Wave_functions_wrap const &y) {
+        x.copy(y, num_active);
+    }
+
+    void repack(std::vector<size_t> const &ids) {
+        num_active = ids.size();
+    }
+};
+
+struct projector_H_min_e_S_projector {
+    Hamiltonian_k Hk;
+    std::vector<double> min_eigenvals;
+    int num_active;
+    Wave_functions * Hphi;
+    Wave_functions * Sphi;
+
+    projector_H_min_e_S_projector(Hamiltonian_k Hk, std::vector<double> const &eigvals, Wave_functions * Hphi, Wave_functions * Sphi)
+    : Hk(Hk), min_eigenvals(eigvals), num_active(static_cast<int>(eigvals.size())), Hphi(Hphi), Sphi(Sphi)
+    {
+        // flip the sign of the eigenvals so that the axpby works
+        for (auto &e : min_eigenvals)
+            e *= -1;
+    }
+
+    void repack(std::vector<size_t> const &ids) {
+        for (size_t i = 0; i < ids.size(); ++i) {
+            eigenvals[i] = eigenvals[ids[i]];
+        }
+
+        num_active = static_cast<int>(ids.size());
+    }
+
+    // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = (H - e_j S)
+    void multiply(double alpha, Wave_functions_wrap x, double beta, Wave_functions_wrap y) {
+        // Hphi = H * x, Sphi = S * x
+        H_min_e_times_S.Hk.apply_h_s<double_complex>(
+            spin_range(0),
+            0,
+            num_active,
+            *x.x,
+            Hphi,
+            Sphi
+        );
+
+        // Sphi[:, i] = Hphi[:, i] + min_eigenvals[:, i] * Sphi[:, i]
+        Sphi->xpby(device_t::CPU, spin_range(0), Hphi, min_eigenvals, num_active);
+
+        // y[:, i] <- alpha * Sphi[:, i] + beta * y[:, i]
+        y.x->axpby(device_t::CPU, spin_range(0), alpha, Sphi, beta, num_active);
+    }
+};
+
+void ground_state(Simulation_context& ctx,
                     task_t              task,
                     cmd_args const&     args,
                     int                 write_output)
 {
     auto& inp = ctx.parameters_input();
 
+    if (ctx.num_mag_dims() != 1)
+        return;
+
     K_point_set kset(ctx, ctx.parameters_input().ngridk_, ctx.parameters_input().shiftk_, ctx.use_symmetry());
     DFT_ground_state dft(kset);
 
     auto& potential = dft.potential();
-    auto& density = dft.density();
     dft.initial_state();
 
     double initial_tol = ctx.iterative_solver_tolerance();
 
     /* launch the calculation */
-    auto result = dft.find(inp.density_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, true);
-
-    /* wait for all */
-    // ctx.comm().barrier();
+    auto result = dft.find(inp.density_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, false);
 
     // now do something linear responsy.
-    // Hamiltonian0 H0(potential);
+    Hamiltonian0 H0(potential);
 
-    // for (int ikloc = 0; ikloc < kset.spl_num_kpoints().local_size(); ikloc++) {
-    //     int ik  = kset.spl_num_kpoints(ikloc);
-    //     auto kp = kset[ik];
-    //     auto Hk = H0(*kp);
+    for (int ikloc = 0; ikloc < kset.spl_num_kpoints().local_size(); ikloc++) {
+        int ik  = kset.spl_num_kpoints(ikloc);
+        auto kp = kset[ik];
 
-    //     // now do something with cg.
-    // }
+        auto &Q = kp->spinor_wave_functions();
+
+        auto num_sc = Q.num_sc();
+        auto num_wf = Q.num_wf();
+
+        Wave_functions Hphi(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
+        Wave_functions Sphi(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
+
+        auto H_min_e_times_S = projector_H_min_e_S_projector{
+            H0(*kp),
+            kset.get_band_energies(ik, 0)
+        };
+
+        auto& mp = ctx.mem_pool(ctx.host_memory_t());
+
+        // Wave_functions Hphi(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
+        // Wave_functions res(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
+
+        // H_min_e_times_S.Hk.apply_h_s<double_complex>(
+        //     spin_range(0), 0, num_wf, Q, &Hphi, &Sphi
+        // );
+
+        // mdarray<double, 1> eval(num_wf);
+        // for (int i = 0; i < num_wf; ++i)
+        //     eval(i) = H_min_e_times_S.eigenvals[i];
+
+        // sirius::compute_residuals(
+        //     ctx.aux_preferred_memory_t(),
+        //     spin_range(0),
+        //     num_wf,
+        //     eval,
+        //     Hphi,
+        //     Sphi,
+        //     res
+        // );
+
+        // auto result = res.l2norm(device_t::CPU, spin_range(0), num_wf);
+
+        // for (int i = 0; i < num_wf; ++i) {
+        //     std::cout << "i = " << i << ": " << result[i] << '\n';
+        // }
+
+        identity_preconditioner preconditioner{static_cast<int>(num_wf)};
+
+        // State vectors for CG, where the right hand side B gets overwritten in place
+        // X is the solution, and U and C are auxiliary.
+        Wave_functions X(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
+        Wave_functions B(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
+        Wave_functions U(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
+        Wave_functions C(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
+
+        // When applying projectors, we need S * Q to be available.
+        Wave_functions SQ(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
+
+        sirius::apply_S_operator<double_complex>(
+            ctx.processing_unit(),
+            spin_range(0),
+            0,
+            num_wf,
+            kp->beta_projectors(),
+            Q,
+            &H0.Q(),
+            SQ);
+
+        // Initial guess should be orthogonal to psi, so 0 works.
+        X.zero(device_t::CPU, 0, 0, num_wf);
+
+        // Create a constant right-hand side.
+        B.pw_coeffs(0).prime() = []() { return 1.0; };
+
+        // Apply B <- (I - SQQ')B
+        sddk::dmatrix<double_complex> ovlp(num_wf, num_wf);
+        sddk::inner(ctx.spla_context(), spin_range(0), Q, 0, num_wf, B, 0, num_wf, ovlp, 0, 0);
+        sddk::transform<double_complex>(ctx.spla_context(), 0, -1.0, {&SQ}, 0, num_wf, ovlp, 0, 0, 1.0, {&B}, 0, num_wf);
+
+        // check if things are block-orthogonal.
+        sddk::inner(ctx.spla_context(), spin_range(0), Q, 0, num_wf, B, 0, num_wf, ovlp, 0, 0);
+
+        auto X_wrap = Wave_functions_wrap{&X};
+        auto B_wrap = Wave_functions_wrap{&B};
+        auto U_wrap = Wave_functions_wrap{&U};
+        auto C_wrap = Wave_functions_wrap{&C};
+
+        sirius::cg::multi_cg(
+            H_min_e_times_S,
+            preconditioner,
+            X_wrap,
+            B_wrap,
+            U_wrap,
+            C_wrap
+        );
+    }
+
+    /* wait for all */
+    ctx.comm().barrier();
 }
 
 /// Run a task based on a command line input.

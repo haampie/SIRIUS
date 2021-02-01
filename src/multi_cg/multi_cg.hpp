@@ -67,7 +67,7 @@ std::vector<std::vector<typename StateVec::value_type>> multi_cg(
 
         auto not_converged = std::vector<size_t>{};
         for (size_t i = 0; i < num_unconverged; ++i) {
-            if (rhos[i] > tol * tol) {
+            if (std::abs(rhos[i]) > tol * tol) {
                 not_converged.push_back(i);
             }
         }

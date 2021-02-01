@@ -340,6 +340,181 @@ void Wave_functions::copy_to(spin_range spins__, memory_t mem__, int i0__, int n
     }
 }
 
+mdarray<double_complex, 1>
+Wave_functions::dot(device_t pu__, spin_range spins__, Wave_functions const &phi, int n__) const
+{
+    mdarray<double_complex, 1> s(n__, memory_t::host, "dot");
+    s.zero();
+
+    for (int is : spins__) {
+        switch (pu__) {
+            case device_t::CPU: {
+                #pragma omp parallel for
+                for (int i = 0; i < n__; i++) {
+                    for (int ig = 0; ig < pw_coeffs(is).num_rows_loc(); ig++) {
+                        auto x = pw_coeffs(is).prime(ig, i);
+                        auto y = phi.pw_coeffs(is).prime(ig, i);
+                        s[i] += x * y;
+                    }
+                    // todo, do something here.
+                    // if (gkvecp_.gvec().reduced()) {
+                    //     if (comm_.rank() == 0) {
+                    //         s[i] = 2 * s[i] - std::pow(pw_coeffs(is).prime(0, i).real(), 2);
+                    //     } else {
+                    //         s[i] *= 2;
+                    //     }
+                    // }
+                    if (has_mt()) {
+                        for (int j = 0; j < mt_coeffs(is).num_rows_loc(); j++) {
+                            auto x = mt_coeffs(is).prime(j, i);
+                            auto y = phi.mt_coeffs(is).prime(j, i);
+                            s[i] += x * y;
+                        }
+                    }
+                }
+                break;
+            }
+            case device_t::GPU: {
+                throw "not implemented yet";
+            }
+        }
+    }
+
+    if (pu__ == device_t::GPU) {
+        s.copy_to(memory_t::host);
+    }
+
+    comm_.allreduce(s.at(memory_t::host), n__);
+
+    return s;
+}
+
+void
+Wave_functions::axpby(device_t pu__, spin_range spins__, double_complex alpha, Wave_functions const &phi, double_complex beta, int n__)
+{
+    for (int is : spins__) {
+        switch (pu__) {
+            case device_t::CPU: {
+                #pragma omp parallel for
+                for (int i = 0; i < n__; i++) {
+                    for (int ig = 0; ig < pw_coeffs(is).num_rows_loc(); ig++) {
+                        auto x = pw_coeffs(is).prime(ig, i);
+                        auto y = phi.pw_coeffs(is).prime(ig, i);
+                        
+                        pw_coeffs(is).prime(ig, i) = alpha * x + beta * y;
+                    }
+                    if (has_mt()) {
+                        for (int j = 0; j < mt_coeffs(is).num_rows_loc(); j++) {
+                            auto x = mt_coeffs(is).prime(j, i);
+                            auto y = phi.mt_coeffs(is).prime(j, i);
+                            mt_coeffs(is).prime(j, i) = alpha * x + beta * y;
+                        }
+                    }
+                }
+                break;
+            }
+            case device_t::GPU: {
+                throw "not implemented yet";
+            }
+        }
+    }
+}
+
+void
+Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, std::vector<double_complex> const &alphas, int n__)
+{
+    for (int is : spins__) {
+        switch (pu__) {
+            case device_t::CPU: {
+                #pragma omp parallel for
+                for (int i = 0; i < n__; i++) {
+                    auto alpha = alphas[i];
+
+                    for (int ig = 0; ig < pw_coeffs(is).num_rows_loc(); ig++) {
+                        auto x = pw_coeffs(is).prime(ig, i);
+                        auto y = phi.pw_coeffs(is).prime(ig, i);
+                        
+                        pw_coeffs(is).prime(ig, i) = y + alpha * x;
+                    }
+                    if (has_mt()) {
+                        for (int j = 0; j < mt_coeffs(is).num_rows_loc(); j++) {
+                            auto x = mt_coeffs(is).prime(j, i);
+                            auto y = phi.mt_coeffs(is).prime(j, i);
+                            mt_coeffs(is).prime(j, i) = y + alpha * x;
+                        }
+                    }
+                }
+                break;
+            }
+            case device_t::GPU: {
+                throw "not implemented yet";
+            }
+        }
+    }
+}
+
+void
+Wave_functions::axpy(device_t pu__, spin_range spins__, std::vector<double_complex> const &alphas, Wave_functions const &phi, int n__)
+{
+    for (int is : spins__) {
+        switch (pu__) {
+            case device_t::CPU: {
+                #pragma omp parallel for
+                for (int i = 0; i < n__; i++) {
+                    auto alpha = alphas[i];
+
+                    for (int ig = 0; ig < pw_coeffs(is).num_rows_loc(); ig++) {
+                        auto x = pw_coeffs(is).prime(ig, i);
+                        auto y = phi.pw_coeffs(is).prime(ig, i);
+                        
+                        pw_coeffs(is).prime(ig, i) = y + alpha * x;
+                    }
+                    if (has_mt()) {
+                        for (int j = 0; j < mt_coeffs(is).num_rows_loc(); j++) {
+                            auto x = mt_coeffs(is).prime(j, i);
+                            auto y = phi.mt_coeffs(is).prime(j, i);
+                            mt_coeffs(is).prime(j, i) = y + alpha * x;
+                        }
+                    }
+                }
+                break;
+            }
+            case device_t::GPU: {
+                throw "not implemented yet";
+            }
+        }
+    }
+}
+
+void
+Wave_functions::axpy_scatter(device_t pu__, spin_range spins__, std::vector<double_complex> const &alphas, Wave_functions const &phi, std::vector<size_t> const &ids)
+{
+    for (int is : spins__) {
+        switch (pu__) {
+            case device_t::CPU: {
+                #pragma omp parallel for
+                for (int i = 0; i < static_cast<int>(ids.size()); i++) {
+                    auto ii = ids[i];
+                    auto alpha = alphas[i];
+
+                    for (int ig = 0; ig < pw_coeffs(is).num_rows_loc(); ig++) {
+                        pw_coeffs(is).prime(ig, ii) += alpha * phi.pw_coeffs(is).prime(ig, i);
+                    }
+                    if (has_mt()) {
+                        for (int j = 0; j < mt_coeffs(is).num_rows_loc(); j++) {
+                            mt_coeffs(is).prime(j, ii) += alpha * phi.mt_coeffs(is).prime(j, i);
+                        }
+                    }
+                }
+                break;
+            }
+            case device_t::GPU: {
+                throw "not implemented yet";
+            }
+        }
+    }
+}
+
 mdarray<double, 1>
 Wave_functions::sumsqr(device_t pu__, spin_range spins__, int n__) const
 {

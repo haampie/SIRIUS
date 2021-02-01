@@ -220,10 +220,6 @@ class Wave_functions
         return (num_sc_ == 1) ? 0 : ispn__;
     }
 
-    /// Compute the sum of squares of expansion coefficients.
-    /** The result is always returned in the host memory */
-    mdarray<double, 1> sumsqr(device_t pu__, spin_range spins__, int n__) const;
-
   public:
     /// Constructor for PW wave-functions.
     /** Memory to store plane-wave coefficients is allocated from the heap. */
@@ -320,6 +316,26 @@ class Wave_functions
         zero_pw(pu__, ispn__, i0__, n__);
         zero_mt(pu__, ispn__, i0__, n__);
     }
+
+    /// Compute the sum of squares of expansion coefficients.
+    /** The result is always returned in the host memory */
+    mdarray<double, 1> sumsqr(device_t pu__, spin_range spins__, int n__) const;
+
+    // compute a dot, i.e. diag(this' * phi).
+    mdarray<double_complex, 1> dot(device_t pu__, spin_range spins__, Wave_functions const &phi, int n__) const;
+
+    // compute this[:, i] = alpha * phi[:, i] + beta * this[:, i]
+    void axpby(device_t pu__, spin_range spins__, double_complex alpha, Wave_functions const &phi, double_complex beta, int n__);
+
+    // compute this[:, i] = phi[:, i] + beta[i] * this[:, i], kinda like an axpy
+    void xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, std::vector<double_complex> const &betas, int n__);
+
+    // compute this[:, i] = alpha[i] * phi[:, i] + this[:, i]
+    void axpy(device_t pu__, spin_range spins__, std::vector<double_complex> const &alphas, Wave_functions const &phi, int n__);
+
+    // compute this[:, ids[i]] = alpha[i] * phi[:, i] + this[:, i]
+    void axpy_scatter(device_t pu__, spin_range spins__, std::vector<double_complex> const &alphas, Wave_functions const &phi, std::vector<size_t> const &ids);
+
 
     /// Copy values from another wave-function.
     /** \param [in] pu   Type of processging unit which copies data.
