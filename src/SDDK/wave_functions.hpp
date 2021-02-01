@@ -325,16 +325,20 @@ class Wave_functions
     mdarray<double_complex, 1> dot(device_t pu__, spin_range spins__, Wave_functions const &phi, int n__) const;
 
     // compute this[:, i] = alpha * phi[:, i] + beta * this[:, i]
-    void axpby(device_t pu__, spin_range spins__, double_complex alpha, Wave_functions const &phi, double_complex beta, int n__);
+    template<class Ta>
+    void axpby(device_t pu__, spin_range spins__, Ta alpha, Wave_functions const &phi, Ta beta, int n__);
 
     // compute this[:, i] = phi[:, i] + beta[i] * this[:, i], kinda like an axpy
-    void xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, std::vector<double_complex> const &betas, int n__);
+    template<class Ta>
+    void xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, std::vector<Ta> const &betas, int n__);
 
     // compute this[:, i] = alpha[i] * phi[:, i] + this[:, i]
-    void axpy(device_t pu__, spin_range spins__, std::vector<double_complex> const &alphas, Wave_functions const &phi, int n__);
+    template<class Ta>
+    void axpy(device_t pu__, spin_range spins__, std::vector<Ta> const &alphas, Wave_functions const &phi, int n__);
 
     // compute this[:, ids[i]] = alpha[i] * phi[:, i] + this[:, i]
-    void axpy_scatter(device_t pu__, spin_range spins__, std::vector<double_complex> const &alphas, Wave_functions const &phi, std::vector<size_t> const &ids);
+    template<class Ta>
+    void axpy_scatter(device_t pu__, spin_range spins__, std::vector<Ta> const &alphas, Wave_functions const &phi, std::vector<size_t> const &ids);
 
 
     /// Copy values from another wave-function.

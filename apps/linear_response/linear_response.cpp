@@ -139,12 +139,11 @@ struct identity_preconditioner {
 struct projector_H_min_e_S_projector {
     Hamiltonian_k Hk;
     std::vector<double> min_eigenvals;
-    int num_active;
     Wave_functions * Hphi;
     Wave_functions * Sphi;
 
-    projector_H_min_e_S_projector(Hamiltonian_k Hk, std::vector<double> const &eigvals, Wave_functions * Hphi, Wave_functions * Sphi)
-    : Hk(Hk), min_eigenvals(eigvals), num_active(static_cast<int>(eigvals.size())), Hphi(Hphi), Sphi(Sphi)
+    projector_H_min_e_S_projector(Hamiltonian_k && Hk, std::vector<double> const &eigvals, Wave_functions * Hphi, Wave_functions * Sphi)
+    : Hk(std::move(Hk)), min_eigenvals(eigvals), Hphi(Hphi), Sphi(Sphi)
     {
         // flip the sign of the eigenvals so that the axpby works
         for (auto &e : min_eigenvals)
@@ -153,16 +152,14 @@ struct projector_H_min_e_S_projector {
 
     void repack(std::vector<size_t> const &ids) {
         for (size_t i = 0; i < ids.size(); ++i) {
-            eigenvals[i] = eigenvals[ids[i]];
+            min_eigenvals[i] = min_eigenvals[ids[i]];
         }
-
-        num_active = static_cast<int>(ids.size());
     }
 
     // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = (H - e_j S)
-    void multiply(double alpha, Wave_functions_wrap x, double beta, Wave_functions_wrap y) {
+    void multiply(double alpha, Wave_functions_wrap x, double beta, Wave_functions_wrap y, int num_active) {
         // Hphi = H * x, Sphi = S * x
-        H_min_e_times_S.Hk.apply_h_s<double_complex>(
+        Hk.apply_h_s<double_complex>(
             spin_range(0),
             0,
             num_active,
@@ -172,10 +169,10 @@ struct projector_H_min_e_S_projector {
         );
 
         // Sphi[:, i] = Hphi[:, i] + min_eigenvals[:, i] * Sphi[:, i]
-        Sphi->xpby(device_t::CPU, spin_range(0), Hphi, min_eigenvals, num_active);
+        Sphi->xpby(device_t::CPU, spin_range(0), *Hphi, min_eigenvals, num_active);
 
         // y[:, i] <- alpha * Sphi[:, i] + beta * y[:, i]
-        y.x->axpby(device_t::CPU, spin_range(0), alpha, Sphi, beta, num_active);
+        y.x->axpby(device_t::CPU, spin_range(0), alpha, *Sphi, beta, num_active);
     }
 };
 
@@ -206,21 +203,20 @@ void ground_state(Simulation_context& ctx,
     for (int ikloc = 0; ikloc < kset.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset.spl_num_kpoints(ikloc);
         auto kp = kset[ik];
-
         auto &Q = kp->spinor_wave_functions();
-
         auto num_sc = Q.num_sc();
         auto num_wf = Q.num_wf();
+        auto& mp = ctx.mem_pool(ctx.host_memory_t());
 
         Wave_functions Hphi(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
         Wave_functions Sphi(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
 
-        auto H_min_e_times_S = projector_H_min_e_S_projector{
+        auto H_min_e_times_S = projector_H_min_e_S_projector(
             H0(*kp),
-            kset.get_band_energies(ik, 0)
-        };
-
-        auto& mp = ctx.mem_pool(ctx.host_memory_t());
+            kset.get_band_energies(ik, 0),
+            &Hphi,
+            &Sphi
+        );
 
         // Wave_functions Hphi(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
         // Wave_functions res(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);

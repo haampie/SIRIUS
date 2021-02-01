@@ -389,8 +389,9 @@ Wave_functions::dot(device_t pu__, spin_range spins__, Wave_functions const &phi
     return s;
 }
 
+template <class Ta>
 void
-Wave_functions::axpby(device_t pu__, spin_range spins__, double_complex alpha, Wave_functions const &phi, double_complex beta, int n__)
+Wave_functions::axpby(device_t pu__, spin_range spins__, Ta alpha, Wave_functions const &phi, Ta beta, int n__)
 {
     for (int is : spins__) {
         switch (pu__) {
@@ -420,8 +421,9 @@ Wave_functions::axpby(device_t pu__, spin_range spins__, double_complex alpha, W
     }
 }
 
+template <class Ta>
 void
-Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, std::vector<double_complex> const &alphas, int n__)
+Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, std::vector<Ta> const &alphas, int n__)
 {
     for (int is : spins__) {
         switch (pu__) {
@@ -453,8 +455,9 @@ Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &ph
     }
 }
 
+template<class Ta>
 void
-Wave_functions::axpy(device_t pu__, spin_range spins__, std::vector<double_complex> const &alphas, Wave_functions const &phi, int n__)
+Wave_functions::axpy(device_t pu__, spin_range spins__, std::vector<Ta> const &alphas, Wave_functions const &phi, int n__)
 {
     for (int is : spins__) {
         switch (pu__) {
@@ -486,8 +489,9 @@ Wave_functions::axpy(device_t pu__, spin_range spins__, std::vector<double_compl
     }
 }
 
+template<class Ta>
 void
-Wave_functions::axpy_scatter(device_t pu__, spin_range spins__, std::vector<double_complex> const &alphas, Wave_functions const &phi, std::vector<size_t> const &ids)
+Wave_functions::axpy_scatter(device_t pu__, spin_range spins__, std::vector<Ta> const &alphas, Wave_functions const &phi, std::vector<size_t> const &ids)
 {
     for (int is : spins__) {
         switch (pu__) {
@@ -568,5 +572,18 @@ Wave_functions::sumsqr(device_t pu__, spin_range spins__, int n__) const
     comm_.allreduce(s.at(memory_t::host), n__);
     return s;
 }
+template void Wave_functions::axpby(device_t pu__, spin_range spins__, double alpha, Wave_functions const &phi, double beta, int n__);
+template void Wave_functions::axpby(device_t pu__, spin_range spins__, double_complex alpha, Wave_functions const &phi, double_complex beta, int n__);
+
+template void Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, std::vector<double> const &betas, int n__);
+template void Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, std::vector<double_complex> const &betas, int n__);
+
+template void Wave_functions::axpy(device_t pu__, spin_range spins__, std::vector<double> const &alphas, Wave_functions const &phi, int n__);
+template void Wave_functions::axpy(device_t pu__, spin_range spins__, std::vector<double_complex> const &alphas, Wave_functions const &phi, int n__);
+
+template void Wave_functions::axpy_scatter(device_t pu__, spin_range spins__, std::vector<double_complex> const &alphas, Wave_functions const &phi, std::vector<size_t> const &ids);
+template void Wave_functions::axpy_scatter(device_t pu__, spin_range spins__, std::vector<double> const &alphas, Wave_functions const &phi, std::vector<size_t> const &ids);
 
 } // namespace sddk
+
+
