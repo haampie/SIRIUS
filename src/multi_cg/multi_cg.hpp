@@ -5,6 +5,12 @@
 #include <algorithm>
 #include <numeric>
 #include <cmath>
+#include <complex>
+
+#ifndef NDEBUG
+#include <iostream>
+#include <iomanip>
+#endif
 
 namespace sirius {
 namespace cg {
@@ -17,10 +23,18 @@ void repack(std::vector<T> &data, std::vector<size_t> const&ids) {
 }
 
 template<class Matrix, class Prec, class StateVec>
-std::vector<std::vector<typename StateVec::value_type>> multi_cg(
+auto multi_cg(
     Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C, 
     size_t maxiters = 10, double tol = 1e-3
 ) {
+
+    // This can be e.g. std::complex<double>
+    using number_type = typename StateVec::value_type;
+
+    // And in some cases we need norms etc, so take the number type of
+    // whatever std::real(...) returns
+    using real_type = decltype(std::real(static_cast<number_type>(1)));
+
     auto n = X.cols();
 
     U.fill(0);
@@ -32,7 +46,7 @@ std::vector<std::vector<typename StateVec::value_type>> multi_cg(
     // R = B - A * X
     A.multiply(-1.0, X, 1.0, R, n);
 
-    auto rhos = std::vector<typename StateVec::value_type>(n);
+    auto rhos = std::vector<number_type>(n);
     auto rhos_old = rhos;
     auto sigmas = rhos;
     auto alphas = rhos;
@@ -44,7 +58,7 @@ std::vector<std::vector<typename StateVec::value_type>> multi_cg(
 
     size_t num_unconverged = n;
 
-    auto residual_history = std::vector<std::vector<typename StateVec::value_type>>(n);
+    auto residual_history = std::vector<std::vector<real_type>>(n);
 
     for (size_t iter = 0; iter < maxiters; ++iter) {
         // Check the residual norms in the P-norm
@@ -53,8 +67,12 @@ std::vector<std::vector<typename StateVec::value_type>> multi_cg(
         // we check the errors roughly in the A-norm.
         // When P = I, we just check the residual norm.
 
+#ifndef NDEBUG
+        std::cout << "Iteration " << iter << "\n";
+#endif
+
         // C = P * R.
-        P.apply(C, R);
+        P.apply(C, R, num_unconverged);
 
         rhos_old = rhos;
 
@@ -62,7 +80,7 @@ std::vector<std::vector<typename StateVec::value_type>> multi_cg(
         C.block_dot(R, rhos, num_unconverged);
 
         for (size_t i = 0; i < num_unconverged; ++i) {
-            residual_history[ids[i]].push_back(std::sqrt(rhos[i]));
+            residual_history[ids[i]].push_back(std::sqrt(std::abs(rhos[i])));
         }
 
         auto not_converged = std::vector<size_t>{};
@@ -73,7 +91,7 @@ std::vector<std::vector<typename StateVec::value_type>> multi_cg(
         }
 
         num_unconverged = not_converged.size();
-        
+
         if (not_converged.empty()) {
             break;
         }

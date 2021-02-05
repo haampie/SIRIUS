@@ -125,14 +125,12 @@ struct Wave_functions_wrap {
 };
 
 struct identity_preconditioner {
-    size_t num_active;
-
-    void apply(Wave_functions_wrap &x, Wave_functions_wrap const &y) {
+    void apply(Wave_functions_wrap &x, Wave_functions_wrap const &y, size_t num_active) {
         x.copy(y, num_active);
     }
 
     void repack(std::vector<size_t> const &ids) {
-        num_active = ids.size();
+        // nothing
     }
 };
 
@@ -245,7 +243,7 @@ void ground_state(Simulation_context& ctx,
         //     std::cout << "i = " << i << ": " << result[i] << '\n';
         // }
 
-        identity_preconditioner preconditioner{static_cast<int>(num_wf)};
+        identity_preconditioner preconditioner{};
 
         // State vectors for CG, where the right hand side B gets overwritten in place
         // X is the solution, and U and C are auxiliary.
@@ -286,7 +284,7 @@ void ground_state(Simulation_context& ctx,
         auto U_wrap = Wave_functions_wrap{&U};
         auto C_wrap = Wave_functions_wrap{&C};
 
-        sirius::cg::multi_cg(
+        auto residuals_per_iteration = sirius::cg::multi_cg(
             H_min_e_times_S,
             preconditioner,
             X_wrap,
@@ -294,6 +292,13 @@ void ground_state(Simulation_context& ctx,
             U_wrap,
             C_wrap
         );
+
+        for (size_t i = 0; i < residuals_per_iteration.size(); ++i) {
+            std::cout << std::setw(4) << i << ": ";
+            for (auto val : residuals_per_iteration[i])
+                std::cout << std::scientific << val << ' ';
+            std::cout << '\n';
+        }
     }
 
     /* wait for all */
