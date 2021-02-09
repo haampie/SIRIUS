@@ -65,8 +65,8 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string fname__,
     auto ctx_ptr = std::make_unique<Simulation_context>(json.dump(), Communicator::world());
     Simulation_context& ctx = *ctx_ptr;
 
-    auto& inp = ctx.parameters_input();
-    if (inp.gamma_point_ && !(inp.ngridk_[0] * inp.ngridk_[1] * inp.ngridk_[2] == 1)) {
+    auto& inp = ctx.cfg().parameters();
+    if (inp.gamma_point() && !(inp.ngridk()[0] * inp.ngridk()[1] * inp.ngridk()[2] == 1)) {
         TERMINATE("this is not a Gamma-point calculation")
     }
 
@@ -179,12 +179,12 @@ void ground_state(Simulation_context& ctx,
                     cmd_args const&     args,
                     int                 write_output)
 {
-    auto& inp = ctx.parameters_input();
+    auto& inp = ctx.cfg().parameters();
 
     if (ctx.num_mag_dims() != 1)
         return;
 
-    K_point_set kset(ctx, ctx.parameters_input().ngridk_, ctx.parameters_input().shiftk_, ctx.use_symmetry());
+    K_point_set kset(ctx, inp.ngridk(), inp.shiftk(), ctx.use_symmetry());
     DFT_ground_state dft(kset);
 
     auto& potential = dft.potential();
@@ -193,7 +193,7 @@ void ground_state(Simulation_context& ctx,
     double initial_tol = ctx.iterative_solver_tolerance();
 
     /* launch the calculation */
-    auto result = dft.find(inp.density_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, false);
+    auto result = dft.find(inp.density_tol(), inp.energy_tol(), initial_tol, inp.num_dft_iter(), false);
 
     // now do something linear responsy.
     Hamiltonian0 H0(potential);
