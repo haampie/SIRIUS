@@ -289,7 +289,7 @@ void ground_state(Simulation_context& ctx,
             B_wrap,
             U_wrap,
             C_wrap,
-            20,
+            50,
             1e-6
         );
 
