@@ -399,15 +399,15 @@ Wave_functions::axpby(device_t pu__, spin_range spins__, Ta alpha, Wave_function
                 #pragma omp parallel for
                 for (int i = 0; i < n__; i++) {
                     for (int ig = 0; ig < pw_coeffs(is).num_rows_loc(); ig++) {
-                        auto x = pw_coeffs(is).prime(ig, i);
-                        auto y = phi.pw_coeffs(is).prime(ig, i);
+                        auto x = phi.pw_coeffs(is).prime(ig, i);
+                        auto y = pw_coeffs(is).prime(ig, i);
                         
                         pw_coeffs(is).prime(ig, i) = alpha * x + beta * y;
                     }
                     if (has_mt()) {
                         for (int j = 0; j < mt_coeffs(is).num_rows_loc(); j++) {
-                            auto x = mt_coeffs(is).prime(j, i);
-                            auto y = phi.mt_coeffs(is).prime(j, i);
+                            auto x = phi.mt_coeffs(is).prime(j, i);
+                            auto y = mt_coeffs(is).prime(j, i);
                             mt_coeffs(is).prime(j, i) = alpha * x + beta * y;
                         }
                     }
@@ -423,26 +423,26 @@ Wave_functions::axpby(device_t pu__, spin_range spins__, Ta alpha, Wave_function
 
 template <class Ta>
 void
-Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, std::vector<Ta> const &alphas, int n__)
+Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, std::vector<Ta> const &betas, int n__)
 {
     for (int is : spins__) {
         switch (pu__) {
             case device_t::CPU: {
                 #pragma omp parallel for
                 for (int i = 0; i < n__; i++) {
-                    auto alpha = alphas[i];
+                    auto beta = betas[i];
 
                     for (int ig = 0; ig < pw_coeffs(is).num_rows_loc(); ig++) {
-                        auto x = pw_coeffs(is).prime(ig, i);
-                        auto y = phi.pw_coeffs(is).prime(ig, i);
+                        auto x = phi.pw_coeffs(is).prime(ig, i);
+                        auto y = pw_coeffs(is).prime(ig, i);
                         
-                        pw_coeffs(is).prime(ig, i) = y + alpha * x;
+                        pw_coeffs(is).prime(ig, i) = x + beta * y;
                     }
                     if (has_mt()) {
                         for (int j = 0; j < mt_coeffs(is).num_rows_loc(); j++) {
-                            auto x = mt_coeffs(is).prime(j, i);
-                            auto y = phi.mt_coeffs(is).prime(j, i);
-                            mt_coeffs(is).prime(j, i) = y + alpha * x;
+                            auto x = phi.mt_coeffs(is).prime(j, i);
+                            auto y = mt_coeffs(is).prime(j, i);
+                            mt_coeffs(is).prime(j, i) = x + beta * y;
                         }
                     }
                 }
@@ -467,16 +467,16 @@ Wave_functions::axpy(device_t pu__, spin_range spins__, std::vector<Ta> const &a
                     auto alpha = alphas[i];
 
                     for (int ig = 0; ig < pw_coeffs(is).num_rows_loc(); ig++) {
-                        auto x = pw_coeffs(is).prime(ig, i);
-                        auto y = phi.pw_coeffs(is).prime(ig, i);
+                        auto x = phi.pw_coeffs(is).prime(ig, i);
+                        auto y = pw_coeffs(is).prime(ig, i);
                         
-                        pw_coeffs(is).prime(ig, i) = y + alpha * x;
+                        pw_coeffs(is).prime(ig, i) = alpha * x + y;
                     }
                     if (has_mt()) {
                         for (int j = 0; j < mt_coeffs(is).num_rows_loc(); j++) {
-                            auto x = mt_coeffs(is).prime(j, i);
-                            auto y = phi.mt_coeffs(is).prime(j, i);
-                            mt_coeffs(is).prime(j, i) = y + alpha * x;
+                            auto x = phi.mt_coeffs(is).prime(j, i);
+                            auto y = mt_coeffs(is).prime(j, i);
+                            mt_coeffs(is).prime(j, i) = alpha * x + y;
                         }
                     }
                 }

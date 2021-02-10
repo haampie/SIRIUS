@@ -134,14 +134,37 @@ struct identity_preconditioner {
     }
 };
 
+struct Projector {
+    Wave_functions * Q;
+    Wave_functions * SQ;
+    sddk::dmatrix<double_complex> overlap;
+
+    Projector(Wave_functions * Q, Wave_functions * SQ) :
+    Q(Q), SQ(SQ), overlap(Q->num_wf(), Q->num_wf())
+    {}
+
+    // x[:, i] <- (I - SQQ')' * x[:, i] for i = 0..n
+    void apply(spla::Context &spla_context, Wave_functions &x, int num) {
+        sddk::inner(spla_context, spin_range(0), *SQ, 0, SQ->num_wf(), x, 0, num, overlap, 0, 0);
+        sddk::transform<double_complex>(spla_context, 0, -1.0, {Q}, 0, Q->num_wf(), overlap, 0, 0, 1.0, {&x}, 0, num);
+    }
+
+    // x[:, i] <- (I - SQQ')x * x[:, i] for i = 0..n
+    void apply_conj(spla::Context &spla_context, Wave_functions &x, int num) {
+        sddk::inner(spla_context, spin_range(0), *Q, 0, Q->num_wf(), x, 0, num, overlap, 0, 0);
+        sddk::transform<double_complex>(spla_context, 0, -1.0, {SQ}, 0, SQ->num_wf(), overlap, 0, 0, 1.0, {&x}, 0, num);
+    }
+};
+
 struct projector_H_min_e_S_projector {
     Hamiltonian_k Hk;
+    Projector * projector;
     std::vector<double> min_eigenvals;
     Wave_functions * Hphi;
     Wave_functions * Sphi;
 
-    projector_H_min_e_S_projector(Hamiltonian_k && Hk, std::vector<double> const &eigvals, Wave_functions * Hphi, Wave_functions * Sphi)
-    : Hk(std::move(Hk)), min_eigenvals(eigvals), Hphi(Hphi), Sphi(Sphi)
+    projector_H_min_e_S_projector(Hamiltonian_k && Hk, Projector * projector, std::vector<double> const &eigvals, Wave_functions * Hphi, Wave_functions * Sphi)
+    : Hk(std::move(Hk)), projector(projector), min_eigenvals(eigvals), Hphi(Hphi), Sphi(Sphi)
     {
         // flip the sign of the eigenvals so that the axpby works
         for (auto &e : min_eigenvals)
@@ -154,7 +177,7 @@ struct projector_H_min_e_S_projector {
         }
     }
 
-    // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = (H - e_j S)
+    // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = P * (H - e_j S) * P'
     void multiply(double alpha, Wave_functions_wrap x, double beta, Wave_functions_wrap y, int num_active) {
         // Hphi = H * x, Sphi = S * x
         Hk.apply_h_s<double_complex>(
@@ -168,6 +191,10 @@ struct projector_H_min_e_S_projector {
 
         // Sphi[:, i] = Hphi[:, i] + min_eigenvals[:, i] * Sphi[:, i]
         Sphi->xpby(device_t::CPU, spin_range(0), *Hphi, min_eigenvals, num_active);
+
+        // We assume that x is already orthogonal to Q, so we don't apply
+        // project.apply to x
+        projector->apply_conj(Hk.H0().ctx().spla_context(), *Sphi, num_active);
 
         // y[:, i] <- alpha * Sphi[:, i] + beta * y[:, i]
         y.x->axpby(device_t::CPU, spin_range(0), alpha, *Sphi, beta, num_active);
@@ -209,49 +236,6 @@ void ground_state(Simulation_context& ctx,
         Wave_functions Hphi(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
         Wave_functions Sphi(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
 
-        auto H_min_e_times_S = projector_H_min_e_S_projector(
-            H0(*kp),
-            kset.get_band_energies(ik, 0),
-            &Hphi,
-            &Sphi
-        );
-
-        // Wave_functions Hphi(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
-        // Wave_functions res(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
-
-        // H_min_e_times_S.Hk.apply_h_s<double_complex>(
-        //     spin_range(0), 0, num_wf, Q, &Hphi, &Sphi
-        // );
-
-        // mdarray<double, 1> eval(num_wf);
-        // for (int i = 0; i < num_wf; ++i)
-        //     eval(i) = H_min_e_times_S.eigenvals[i];
-
-        // sirius::compute_residuals(
-        //     ctx.aux_preferred_memory_t(),
-        //     spin_range(0),
-        //     num_wf,
-        //     eval,
-        //     Hphi,
-        //     Sphi,
-        //     res
-        // );
-
-        // auto result = res.l2norm(device_t::CPU, spin_range(0), num_wf);
-
-        // for (int i = 0; i < num_wf; ++i) {
-        //     std::cout << "i = " << i << ": " << result[i] << '\n';
-        // }
-
-        identity_preconditioner preconditioner{};
-
-        // State vectors for CG, where the right hand side B gets overwritten in place
-        // X is the solution, and U and C are auxiliary.
-        Wave_functions X(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
-        Wave_functions B(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
-        Wave_functions U(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
-        Wave_functions C(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
-
         // When applying projectors, we need S * Q to be available.
         Wave_functions SQ(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
 
@@ -265,6 +249,25 @@ void ground_state(Simulation_context& ctx,
             &H0.Q(),
             SQ);
 
+        auto projector = Projector(&Q, &SQ);
+
+        auto H_min_e_times_S = projector_H_min_e_S_projector(
+            H0(*kp),
+            &projector,
+            kset.get_band_energies(ik, 0),
+            &Hphi,
+            &Sphi
+        );
+
+        identity_preconditioner preconditioner{};
+
+        // State vectors for CG, where the right hand side B gets overwritten in place
+        // X is the solution, and U and C are auxiliary.
+        Wave_functions X(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
+        Wave_functions B(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
+        Wave_functions U(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
+        Wave_functions C(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
+
         // Initial guess should be orthogonal to psi, so 0 works.
         X.zero(device_t::CPU, 0, 0, num_wf);
 
@@ -272,12 +275,7 @@ void ground_state(Simulation_context& ctx,
         B.pw_coeffs(0).prime() = []() { return 1.0; };
 
         // Apply B <- (I - SQQ')B
-        sddk::dmatrix<double_complex> ovlp(num_wf, num_wf);
-        sddk::inner(ctx.spla_context(), spin_range(0), Q, 0, num_wf, B, 0, num_wf, ovlp, 0, 0);
-        sddk::transform<double_complex>(ctx.spla_context(), 0, -1.0, {&SQ}, 0, num_wf, ovlp, 0, 0, 1.0, {&B}, 0, num_wf);
-
-        // check if things are block-orthogonal.
-        sddk::inner(ctx.spla_context(), spin_range(0), Q, 0, num_wf, B, 0, num_wf, ovlp, 0, 0);
+        projector.apply_conj(ctx.spla_context(), B, num_wf);
 
         auto X_wrap = Wave_functions_wrap{&X};
         auto B_wrap = Wave_functions_wrap{&B};
@@ -290,7 +288,9 @@ void ground_state(Simulation_context& ctx,
             X_wrap,
             B_wrap,
             U_wrap,
-            C_wrap
+            C_wrap,
+            20,
+            1e-6
         );
 
         for (size_t i = 0; i < residuals_per_iteration.size(); ++i) {
