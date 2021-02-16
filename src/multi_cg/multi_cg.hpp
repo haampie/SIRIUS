@@ -7,10 +7,7 @@
 #include <cmath>
 #include <complex>
 
-#ifndef NDEBUG
-#include <iostream>
-#include <iomanip>
-#endif
+#include "utils/profiler.hpp"
 
 namespace sirius {
 namespace cg {
@@ -27,6 +24,8 @@ auto multi_cg(
     Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C, 
     size_t maxiters = 10, double tol = 1e-3
 ) {
+
+    PROFILE_START("sirius::cg::multi_cg|init");
 
     // This can be e.g. std::complex<double>
     using number_type = typename StateVec::value_type;
@@ -60,16 +59,16 @@ auto multi_cg(
 
     auto residual_history = std::vector<std::vector<real_type>>(n);
 
+    PROFILE_STOP("sirius::cg::multi_cg|init");
+
     for (size_t iter = 0; iter < maxiters; ++iter) {
+        PROFILE("sirius::cg::multi_cg|iter");
+
         // Check the residual norms in the P-norm
         // that means whenever P is approximately inv(A)
         // since (r, Pr) = (Ae, PAe) ~= (e, Ae)
         // we check the errors roughly in the A-norm.
         // When P = I, we just check the residual norm.
-
-#ifndef NDEBUG
-        std::cout << "Iteration " << iter << "\n";
-#endif
 
         // C = P * R.
         P.apply(C, R, num_unconverged);

@@ -90,12 +90,6 @@ struct Wave_functions_wrap {
         return x->num_wf();
     }
 
-    void block_dot(Wave_functions_wrap const &y, std::vector<double_complex> &rhos, size_t num_unconverged) {
-        auto result = x->dot(device_t::CPU, sddk::spin_range(0), *y.x, static_cast<int>(num_unconverged));
-        for (int i = 0; i < static_cast<int>(num_unconverged); ++i)
-            rhos[i] = result(i);
-    }
-
     void repack(std::vector<size_t> const &ids) {
         size_t j = 0;
         for (auto i : ids) {
@@ -107,25 +101,37 @@ struct Wave_functions_wrap {
         }
     }
 
+    void block_dot(Wave_functions_wrap const &y, std::vector<double_complex> &rhos, size_t num_unconverged) {
+        PROFILE("linear_repsonse::Wave_functions::block_dot");
+        auto result = x->dot(device_t::CPU, sddk::spin_range(0), *y.x, static_cast<int>(num_unconverged));
+        for (int i = 0; i < static_cast<int>(num_unconverged); ++i)
+            rhos[i] = result(i);
+    }
+
     void copy(Wave_functions_wrap const &y, size_t num) {
+        PROFILE("linear_repsonse::Wave_functions::copy");
         x->copy_from(*y.x, static_cast<int>(num), 0, 0, 0, 0);
     }
 
     void block_xpby(Wave_functions_wrap const &y, std::vector<double_complex> const &alphas, size_t num) {
+        PROFILE("linear_repsonse::Wave_functions::block_xpby");
         x->xpby(device_t::CPU, sddk::spin_range(0), *y.x, alphas, static_cast<int>(num));
     }
 
     void block_axpy_scatter(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, std::vector<size_t> const &ids) {
+        PROFILE("linear_repsonse::Wave_functions::block_axpy_scatter");
         x->axpy_scatter(device_t::CPU, sddk::spin_range(0), alphas, *y.x, ids);
     }
 
     void block_axpy(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, size_t num) {
+        PROFILE("linear_repsonse::Wave_functions::block_axpy");
         x->axpy(device_t::CPU, sddk::spin_range(0), alphas, *y.x, static_cast<int>(num));
     }
 };
 
 struct identity_preconditioner {
     void apply(Wave_functions_wrap &x, Wave_functions_wrap const &y, size_t num_active) {
+        PROFILE("linear_repsonse::identity_preconditioner::apply");
         x.copy(y, num_active);
     }
 
@@ -145,12 +151,14 @@ struct Projector {
 
     // x[:, i] <- (I - SQQ')' * x[:, i] for i = 0..n
     void apply(spla::Context &spla_context, Wave_functions &x, int num) {
+        PROFILE("linear_repsonse::Projector::apply");
         sddk::inner(spla_context, spin_range(0), *SQ, 0, SQ->num_wf(), x, 0, num, overlap, 0, 0);
         sddk::transform<double_complex>(spla_context, 0, -1.0, {Q}, 0, Q->num_wf(), overlap, 0, 0, 1.0, {&x}, 0, num);
     }
 
     // x[:, i] <- (I - SQQ')x * x[:, i] for i = 0..n
     void apply_conj(spla::Context &spla_context, Wave_functions &x, int num) {
+        PROFILE("linear_repsonse::Projector::apply_conj");
         sddk::inner(spla_context, spin_range(0), *Q, 0, Q->num_wf(), x, 0, num, overlap, 0, 0);
         sddk::transform<double_complex>(spla_context, 0, -1.0, {SQ}, 0, SQ->num_wf(), overlap, 0, 0, 1.0, {&x}, 0, num);
     }
@@ -179,6 +187,8 @@ struct projector_H_min_e_S_projector {
 
     // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = P * (H - e_j S) * P'
     void multiply(double alpha, Wave_functions_wrap x, double beta, Wave_functions_wrap y, int num_active) {
+        PROFILE("linear_repsonse::projector_H_min_e_S_projector::multiply");
+
         // Hphi = H * x, Sphi = S * x
         Hk.apply_h_s<double_complex>(
             spin_range(0),
