@@ -12,14 +12,15 @@
 namespace sirius {
 namespace cg {
 
-template <class T>
-void repack(std::vector<T> &data, std::vector<size_t> const&ids) {
+template <class Container>
+void repack(Container &data, std::vector<size_t> const&ids) {
     for (size_t i = 0; i < ids.size(); ++i) {
         data[i] = data[ids[i]];
     }
 }
 
-template<class Matrix, class Prec, class StateVec>
+template<class Matrix, class Prec, class StateVec, class VecValType = std::vector<typename StateVec::value_type>,
+                                                   class VecIdxType = std::vector<typename StateVec::size_type>>
 auto multi_cg(
     Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C, 
     size_t maxiters = 10, double tol = 1e-3
@@ -45,15 +46,18 @@ auto multi_cg(
     // R = B - A * X
     A.multiply(-1.0, X, 1.0, R, n);
 
-    auto rhos = std::vector<number_type>(n);
-    auto rhos_old = rhos;
-    auto sigmas = rhos;
-    auto alphas = rhos;
+    VecValType rhos(n);
+    VecValType rhos_old(n);
+    VecValType sigmas(n);
+    VecValType alphas(n);
 
     // When vectors converge we move them to the front, but we can't really do
     // that with X, so we have to keep track of where is what.
-    auto ids = std::vector<size_t>(n);
-    std::iota(ids.begin(), ids.end(), 0);
+    VecIdxType ids(n);
+
+    for (typename StateVec::size_type i = 0; i < n; ++i) {
+        ids[i] = i;
+    }
 
     size_t num_unconverged = n;
 
@@ -132,8 +136,8 @@ auto multi_cg(
             alphas[i] = rhos[i] / sigmas[i];
         }
 
-        // X[:, ids[i]] += alpha[i] * U[:, i]
-        X.block_axpy_scatter(alphas, U, ids);
+        // X[:, ids[i]] += alpha[i] * U[:, i] for i < num_unconverged
+        X.block_axpy_scatter(alphas, U, ids, num_unconverged);
 
         for (size_t i = 0; i < num_unconverged; ++i) {
             alphas[i] *= -1;

@@ -12,14 +12,15 @@ struct BlockVector {
     Matrix<NumberType,Dynamic,Dynamic> vec;
 
     typedef NumberType value_type;
+    typedef size_t size_type;
 
     void block_axpy(std::vector<NumberType> alphas, BlockVector const &X, size_t num) {
         DiagonalMatrix<NumberType,Dynamic,Dynamic> D = Map<Matrix<NumberType,Dynamic,1>>(alphas.data(), num).asDiagonal();
         vec.leftCols(num) += X.vec.leftCols(num) * D;
     }
 
-    void block_axpy_scatter(std::vector<NumberType> alphas, BlockVector const &X, std::vector<size_t> ids) {
-        for (size_t i = 0; i < ids.size(); ++i) {
+    void block_axpy_scatter(std::vector<NumberType> alphas, BlockVector const &X, std::vector<size_t> ids, size_t num) {
+        for (size_t i = 0; i < num; ++i) {
             vec.col(ids[i]) += alphas[i] * X.vec.col(i);
         }
     }

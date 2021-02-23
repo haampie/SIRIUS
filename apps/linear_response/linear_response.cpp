@@ -79,6 +79,7 @@ struct Wave_functions_wrap {
     Wave_functions *x;
 
     typedef double_complex value_type;
+    typedef int size_type;
 
     void fill(double_complex val) {
         x->pw_coeffs(0).prime() = [=](){
@@ -101,36 +102,36 @@ struct Wave_functions_wrap {
         }
     }
 
-    void block_dot(Wave_functions_wrap const &y, std::vector<double_complex> &rhos, size_t num_unconverged) {
+    void block_dot(Wave_functions_wrap const &y, sddk::mdarray<double_complex,1> &rhos, size_t num) {
         PROFILE("linear_repsonse::Wave_functions::block_dot");
-        auto result = x->dot(device_t::CPU, sddk::spin_range(0), *y.x, static_cast<int>(num_unconverged));
-        for (int i = 0; i < static_cast<int>(num_unconverged); ++i)
+        auto result = x->dot(device_t::CPU, sddk::spin_range(0), *y.x, num);
+        for (int i = 0; i < num; ++i)
             rhos[i] = result(i);
     }
 
-    void copy(Wave_functions_wrap const &y, size_t num) {
+    void copy(Wave_functions_wrap const &y, int num) {
         PROFILE("linear_repsonse::Wave_functions::copy");
-        x->copy_from(*y.x, static_cast<int>(num), 0, 0, 0, 0);
+        x->copy_from(*y.x, num, 0, 0, 0, 0);
     }
 
-    void block_xpby(Wave_functions_wrap const &y, std::vector<double_complex> const &alphas, size_t num) {
+    void block_xpby(Wave_functions_wrap const &y, sddk::mdarray<double_complex,1> const &alphas, int num) {
         PROFILE("linear_repsonse::Wave_functions::block_xpby");
-        x->xpby(device_t::CPU, sddk::spin_range(0), *y.x, alphas, static_cast<int>(num));
+        x->xpby(device_t::CPU, sddk::spin_range(0), *y.x, alphas, num);
     }
 
-    void block_axpy_scatter(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, std::vector<size_t> const &ids) {
+    void block_axpy_scatter(sddk::mdarray<double_complex,1> const &alphas, Wave_functions_wrap const &y, sddk::mdarray<int,1> const &ids, int num) {
         PROFILE("linear_repsonse::Wave_functions::block_axpy_scatter");
-        x->axpy_scatter(device_t::CPU, sddk::spin_range(0), alphas, *y.x, ids);
+        x->axpy_scatter(device_t::CPU, sddk::spin_range(0), alphas, *y.x, ids, num);
     }
 
-    void block_axpy(std::vector<double_complex> const &alphas, Wave_functions_wrap const &y, size_t num) {
+    void block_axpy(sddk::mdarray<double_complex,1> const &alphas, Wave_functions_wrap const &y, int num) {
         PROFILE("linear_repsonse::Wave_functions::block_axpy");
-        x->axpy(device_t::CPU, sddk::spin_range(0), alphas, *y.x, static_cast<int>(num));
+        x->axpy(device_t::CPU, sddk::spin_range(0), alphas, *y.x, num);
     }
 };
 
 struct identity_preconditioner {
-    void apply(Wave_functions_wrap &x, Wave_functions_wrap const &y, size_t num_active) {
+    void apply(Wave_functions_wrap &x, Wave_functions_wrap const &y, int num_active) {
         PROFILE("linear_repsonse::identity_preconditioner::apply");
         x.copy(y, num_active);
     }
@@ -167,17 +168,13 @@ struct Projector {
 struct projector_H_min_e_S_projector {
     Hamiltonian_k Hk;
     Projector * projector;
-    std::vector<double> min_eigenvals;
+    sddk::mdarray<double_complex,1> min_eigenvals;
     Wave_functions * Hphi;
     Wave_functions * Sphi;
 
-    projector_H_min_e_S_projector(Hamiltonian_k && Hk, Projector * projector, std::vector<double> const &eigvals, Wave_functions * Hphi, Wave_functions * Sphi)
-    : Hk(std::move(Hk)), projector(projector), min_eigenvals(eigvals), Hphi(Hphi), Sphi(Sphi)
-    {
-        // flip the sign of the eigenvals so that the axpby works
-        for (auto &e : min_eigenvals)
-            e *= -1;
-    }
+    projector_H_min_e_S_projector(Hamiltonian_k && Hk, Projector * projector, sddk::mdarray<double_complex,1> &&min_eigvals, Wave_functions * Hphi, Wave_functions * Sphi)
+    : Hk(std::move(Hk)), projector(projector), min_eigenvals(std::move(min_eigvals)), Hphi(Hphi), Sphi(Sphi)
+    {}
 
     void repack(std::vector<size_t> const &ids) {
         for (size_t i = 0; i < ids.size(); ++i) {
@@ -207,7 +204,7 @@ struct projector_H_min_e_S_projector {
         projector->apply_conj(Hk.H0().ctx().spla_context(), *Sphi, num_active);
 
         // y[:, i] <- alpha * Sphi[:, i] + beta * y[:, i]
-        y.x->axpby(device_t::CPU, spin_range(0), alpha, *Sphi, beta, num_active);
+        y.x->axpby(device_t::CPU, spin_range(0), static_cast<double_complex>(alpha), *Sphi, static_cast<double_complex>(beta), num_active);
     }
 };
 
@@ -261,10 +258,16 @@ void ground_state(Simulation_context& ctx,
 
         auto projector = Projector(&Q, &SQ);
 
+        auto eigvals = kset.get_band_energies(ik, 0);
+        sddk::mdarray<double_complex,1> md_eigvals(eigvals.size());
+        for (int i = 0; i < eigvals.size(); ++i) {
+            md_eigvals[i] = -eigvals[i];
+        }
+
         auto H_min_e_times_S = projector_H_min_e_S_projector(
             H0(*kp),
             &projector,
-            kset.get_band_energies(ik, 0),
+            std::move(md_eigvals),
             &Hphi,
             &Sphi
         );
@@ -292,7 +295,13 @@ void ground_state(Simulation_context& ctx,
         auto U_wrap = Wave_functions_wrap{&U};
         auto C_wrap = Wave_functions_wrap{&C};
 
-        auto residuals_per_iteration = sirius::cg::multi_cg(
+        auto residuals_per_iteration = sirius::cg::multi_cg<
+            decltype(H_min_e_times_S),
+            decltype(preconditioner),
+            decltype(X_wrap),
+            sddk::mdarray<double_complex, 1>,
+            sddk::mdarray<int, 1>
+        >(
             H_min_e_times_S,
             preconditioner,
             X_wrap,

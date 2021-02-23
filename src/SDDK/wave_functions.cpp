@@ -375,7 +375,26 @@ Wave_functions::dot(device_t pu__, spin_range spins__, Wave_functions const &phi
                 break;
             }
             case device_t::GPU: {
-                throw "not implemented yet";
+#if defined(SIRIUS_GPU)
+                wf_dot_gpu(
+                    pw_coeffs(is).prime().at(memory_t::device),
+                    phi.pw_coeffs(is).prime().at(memory_t::device),
+                    pw_coeffs(is).num_rows_loc(),
+                    n__,
+                    gkvecp_.gvec().reduced(),
+                    comm_.rank(),
+                    s.at(memory_t::device));
+                if (has_mt()) {
+                    wf_dot_gpu(
+                        mt_coeffs(is).prime().at(memory_t::device),
+                        phi.mt_coeffs(is).prime().at(memory_t::device),
+                        mt_coeffs(is).num_rows_loc(),
+                        n__,
+                        0,
+                        comm_.rank(),
+                        s.at(memory_t::device));
+                }
+#endif
             }
         }
     }
@@ -415,7 +434,24 @@ Wave_functions::axpby(device_t pu__, spin_range spins__, Ta alpha, Wave_function
                 break;
             }
             case device_t::GPU: {
-                throw "not implemented yet";
+#if defined(SIRIUS_GPU)
+                wf_axpby_gpu(
+                    static_cast<double_complex>(alpha),
+                    phi.pw_coeffs(is).prime().at(memory_t::device),
+                    static_cast<double_complex>(beta),
+                    pw_coeffs(is).prime().at(memory_t::device),
+                    pw_coeffs(is).num_rows_loc(),
+                    n__);
+                if (has_mt()) {
+                    wf_axpby_gpu(
+                        static_cast<double_complex>(alpha),
+                        phi.mt_coeffs(is).prime().at(memory_t::device),
+                        static_cast<double_complex>(beta),
+                        mt_coeffs(is).prime().at(memory_t::device),
+                        mt_coeffs(is).num_rows_loc(),
+                        n__);
+                }
+#endif
             }
         }
     }
@@ -423,7 +459,7 @@ Wave_functions::axpby(device_t pu__, spin_range spins__, Ta alpha, Wave_function
 
 template <class Ta>
 void
-Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, std::vector<Ta> const &betas, int n__)
+Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, sddk::mdarray<Ta,1> const &betas, int n__)
 {
     for (int is : spins__) {
         switch (pu__) {
@@ -449,7 +485,29 @@ Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &ph
                 break;
             }
             case device_t::GPU: {
-                throw "not implemented yet";
+#if defined(SIRIUS_GPU)
+                if (!betas.on_device()) {
+                    betas.allocate(memory_t::device);
+                }
+
+                betas.copy_to(memory_t::device, 0, n__);
+
+                wf_xpby_gpu(
+                    phi.pw_coeffs(is).prime().at(memory_t::device),
+                    betas.at(memory_t::device),
+                    pw_coeffs(is).prime().at(memory_t::device),
+                    pw_coeffs(is).num_rows_loc(),
+                    n__);
+
+                if (has_mt()) {
+                    wf_xpby_gpu(
+                        phi.mt_coeffs(is).prime().at(memory_t::device),
+                        betas.at(memory_t::device),
+                        mt_coeffs(is).prime().at(memory_t::device),
+                        mt_coeffs(is).num_rows_loc(),
+                        n__);
+                }
+#endif
             }
         }
     }
@@ -457,7 +515,7 @@ Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &ph
 
 template<class Ta>
 void
-Wave_functions::axpy(device_t pu__, spin_range spins__, std::vector<Ta> const &alphas, Wave_functions const &phi, int n__)
+Wave_functions::axpy(device_t pu__, spin_range spins__, sddk::mdarray<Ta,1> const &alphas, Wave_functions const &phi, int n__)
 {
     for (int is : spins__) {
         switch (pu__) {
@@ -483,7 +541,29 @@ Wave_functions::axpy(device_t pu__, spin_range spins__, std::vector<Ta> const &a
                 break;
             }
             case device_t::GPU: {
-                throw "not implemented yet";
+#if defined(SIRIUS_GPU)
+                if (!alphas.on_device()) {
+                    alphas.allocate(memory_t::device);
+                }
+
+                alphas.copy_to(memory_t::device, 0, n__);
+
+                wf_axpy_gpu(
+                    alphas.at(memory_t::device),
+                    phi.pw_coeffs(is).prime().at(memory_t::device),
+                    pw_coeffs(is).prime().at(memory_t::device),
+                    pw_coeffs(is).num_rows_loc(),
+                    n__);
+
+                if (has_mt()) {
+                    wf_xpby_gpu(
+                        alphas.at(memory_t::device),
+                        phi.mt_coeffs(is).prime().at(memory_t::device),
+                        mt_coeffs(is).prime().at(memory_t::device),
+                        mt_coeffs(is).num_rows_loc(),
+                        n__);
+                }
+#endif
             }
         }
     }
@@ -491,13 +571,13 @@ Wave_functions::axpy(device_t pu__, spin_range spins__, std::vector<Ta> const &a
 
 template<class Ta>
 void
-Wave_functions::axpy_scatter(device_t pu__, spin_range spins__, std::vector<Ta> const &alphas, Wave_functions const &phi, std::vector<size_t> const &ids)
+Wave_functions::axpy_scatter(device_t pu__, spin_range spins__, sddk::mdarray<Ta,1> const &alphas, Wave_functions const &phi, sddk::mdarray<int,1> const &ids, int n__)
 {
     for (int is : spins__) {
         switch (pu__) {
             case device_t::CPU: {
                 #pragma omp parallel for
-                for (int i = 0; i < static_cast<int>(ids.size()); i++) {
+                for (int i = 0; i < n__; i++) {
                     auto ii = ids[i];
                     auto alpha = alphas[i];
 
@@ -513,7 +593,35 @@ Wave_functions::axpy_scatter(device_t pu__, spin_range spins__, std::vector<Ta> 
                 break;
             }
             case device_t::GPU: {
-                throw "not implemented yet";
+#if defined(SIRIUS_GPU)
+                if (!alphas.on_device()) {
+                    alphas.allocate(memory_t::device);
+                }
+                if (!ids.on_device()) {
+                    ids.allocate(memory_t::device);
+                }
+
+                alphas.copy_to(memory_t::device, 0, n__);
+                ids.copy_to(memory_t::device, 0, n__);
+
+                wf_axpy_scatter_gpu(
+                    alphas.at(memory_t::device),
+                    phi.pw_coeffs(is).prime().at(memory_t::device),
+                    pw_coeffs(is).prime().at(memory_t::device),
+                    ids.at(memory_t::device),
+                    pw_coeffs(is).num_rows_loc(),
+                    n__);
+
+                if (has_mt()) {
+                    wf_axpy_scatter_gpu(
+                        alphas.at(memory_t::device),
+                        phi.mt_coeffs(is).prime().at(memory_t::device),
+                        mt_coeffs(is).prime().at(memory_t::device),
+                        ids.at(memory_t::device),
+                        mt_coeffs(is).num_rows_loc(),
+                        n__);
+                }
+#endif
             }
         }
     }
@@ -572,17 +680,17 @@ Wave_functions::sumsqr(device_t pu__, spin_range spins__, int n__) const
     comm_.allreduce(s.at(memory_t::host), n__);
     return s;
 }
-template void Wave_functions::axpby(device_t pu__, spin_range spins__, double alpha, Wave_functions const &phi, double beta, int n__);
+
+// template void Wave_functions::axpby(device_t pu__, spin_range spins__, double alpha, Wave_functions const &phi, double beta, int n__);
+// template void Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, sddk::mdarray<double,1> const &betas, int n__);
+// template void Wave_functions::axpy(device_t pu__, spin_range spins__, sddk::mdarray<double,1> const &alphas, Wave_functions const &phi, int n__);
+// template void Wave_functions::axpy_scatter(device_t pu__, spin_range spins__, sddk::mdarray<double,1> const &alphas, Wave_functions const &phi, sddk::mdarray<int,1> const &ids, int n__);
+
 template void Wave_functions::axpby(device_t pu__, spin_range spins__, double_complex alpha, Wave_functions const &phi, double_complex beta, int n__);
+template void Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, sddk::mdarray<double_complex,1> const &betas, int n__);
+template void Wave_functions::axpy(device_t pu__, spin_range spins__, sddk::mdarray<double_complex,1> const &alphas, Wave_functions const &phi, int n__);
+template void Wave_functions::axpy_scatter(device_t pu__, spin_range spins__, sddk::mdarray<double_complex,1> const &alphas, Wave_functions const &phi, sddk::mdarray<int,1> const &ids, int n__);
 
-template void Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, std::vector<double> const &betas, int n__);
-template void Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, std::vector<double_complex> const &betas, int n__);
-
-template void Wave_functions::axpy(device_t pu__, spin_range spins__, std::vector<double> const &alphas, Wave_functions const &phi, int n__);
-template void Wave_functions::axpy(device_t pu__, spin_range spins__, std::vector<double_complex> const &alphas, Wave_functions const &phi, int n__);
-
-template void Wave_functions::axpy_scatter(device_t pu__, spin_range spins__, std::vector<double_complex> const &alphas, Wave_functions const &phi, std::vector<size_t> const &ids);
-template void Wave_functions::axpy_scatter(device_t pu__, spin_range spins__, std::vector<double> const &alphas, Wave_functions const &phi, std::vector<size_t> const &ids);
 
 } // namespace sddk
 

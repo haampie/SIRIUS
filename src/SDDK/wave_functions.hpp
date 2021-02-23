@@ -38,6 +38,45 @@ extern "C" void add_square_sum_gpu(double_complex const* wf__, int num_rows_loc_
                                    int mpi_rank__, double* result__);
 
 extern "C" void add_checksum_gpu(double_complex const* wf__, int num_rows_loc__, int nwf__, double_complex* result__);
+
+extern "C" void wf_dot_gpu(
+    double_complex const* wf_x__,
+    double_complex const* wf_y__,
+    int num_rows_loc__,
+    int nwf__,
+    int reduced__,
+    int mpi_rank__,
+    double_complex* result__);
+
+extern "C" void wf_axpby_gpu(
+    double_complex alpha,
+    double_complex const* wf_x__,
+    double_complex beta,
+    double_complex* wf_y__,
+    int num_rows_loc__,
+    int num_bands__);
+
+extern "C" void wf_xpby_gpu(
+    double_complex const* wf_x__,
+    double_complex const* betas,
+    double_complex* wf_y__,
+    int num_rows_loc__,
+    int num_bands__);
+
+extern "C" void wf_axpy_gpu(
+    double_complex const* alphas,
+    double_complex const* wf_x__,
+    double_complex* wf_y__,
+    int num_rows_loc__,
+    int num_bands__);
+
+extern "C" void wf_axpy_scatter_gpu(
+    double_complex const* alphas,
+    double_complex const* wf_x__,
+    double_complex* wf_y__,
+    int const * ids__,
+    int num_rows_loc__,
+    int num_bands__);
 #endif
 
 const int sddk_inner_default_block_size = 1024;
@@ -330,15 +369,15 @@ class Wave_functions
 
     // compute this[:, i] = phi[:, i] + beta[i] * this[:, i], kinda like an axpy
     template<class Ta>
-    void xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, std::vector<Ta> const &betas, int n__);
+    void xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, sddk::mdarray<Ta,1> const &betas, int n__);
 
     // compute this[:, i] = alpha[i] * phi[:, i] + this[:, i]
     template<class Ta>
-    void axpy(device_t pu__, spin_range spins__, std::vector<Ta> const &alphas, Wave_functions const &phi, int n__);
+    void axpy(device_t pu__, spin_range spins__, sddk::mdarray<Ta,1> const &alphas, Wave_functions const &phi, int n__);
 
     // compute this[:, ids[i]] = alpha[i] * phi[:, i] + this[:, i]
     template<class Ta>
-    void axpy_scatter(device_t pu__, spin_range spins__, std::vector<Ta> const &alphas, Wave_functions const &phi, std::vector<size_t> const &ids);
+    void axpy_scatter(device_t pu__, spin_range spins__, sddk::mdarray<Ta,1> const &alphas, Wave_functions const &phi, sddk::mdarray<int,1> const &ids, int n__);
 
 
     /// Copy values from another wave-function.
