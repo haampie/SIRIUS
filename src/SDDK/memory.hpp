@@ -881,9 +881,6 @@ class mdarray
     /// Copy constructor is forbidden
     mdarray(mdarray<T, N> const& src) = delete;
 
-    /// Assignment operator is forbidden
-    mdarray<T, N>& operator=(mdarray<T, N> const& src) = delete;
-
   public:
 
     /// Default constructor.
@@ -1208,6 +1205,12 @@ class mdarray
                 offsets_[i] = src.offsets_[i];
             }
         }
+        return *this;
+    }
+
+    /// Assignment is allowed when dimensions match
+    mdarray<T, N>& operator=(mdarray<T, N> const& src) {
+        src >> *this;
         return *this;
     }
 
