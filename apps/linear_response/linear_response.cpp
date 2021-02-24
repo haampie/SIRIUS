@@ -102,7 +102,7 @@ struct Wave_functions_wrap {
         }
     }
 
-    void block_dot(Wave_functions_wrap const &y, sddk::mdarray<double_complex,1> &rhos, size_t num) {
+    void block_dot(Wave_functions_wrap const &y, sddk::mdarray<double_complex,1>  &rhos, size_t num) {
         PROFILE("linear_repsonse::Wave_functions::block_dot");
         auto result = x->dot(device_t::CPU, sddk::spin_range(0), *y.x, num);
         for (int i = 0; i < num; ++i)
@@ -114,17 +114,17 @@ struct Wave_functions_wrap {
         x->copy_from(*y.x, num, 0, 0, 0, 0);
     }
 
-    void block_xpby(Wave_functions_wrap const &y, sddk::mdarray<double_complex,1> const &alphas, int num) {
+    void block_xpby(Wave_functions_wrap const &y, sddk::mdarray<double_complex,1> &alphas, int num) {
         PROFILE("linear_repsonse::Wave_functions::block_xpby");
         x->xpby(device_t::CPU, sddk::spin_range(0), *y.x, alphas, num);
     }
 
-    void block_axpy_scatter(sddk::mdarray<double_complex,1> const &alphas, Wave_functions_wrap const &y, sddk::mdarray<int,1> const &ids, int num) {
+    void block_axpy_scatter(sddk::mdarray<double_complex,1> &alphas, Wave_functions_wrap const &y, sddk::mdarray<int,1> &ids, int num) {
         PROFILE("linear_repsonse::Wave_functions::block_axpy_scatter");
         x->axpy_scatter(device_t::CPU, sddk::spin_range(0), alphas, *y.x, ids, num);
     }
 
-    void block_axpy(sddk::mdarray<double_complex,1> const &alphas, Wave_functions_wrap const &y, int num) {
+    void block_axpy(sddk::mdarray<double_complex,1> &alphas, Wave_functions_wrap const &y, int num) {
         PROFILE("linear_repsonse::Wave_functions::block_axpy");
         x->axpy(device_t::CPU, sddk::spin_range(0), alphas, *y.x, num);
     }

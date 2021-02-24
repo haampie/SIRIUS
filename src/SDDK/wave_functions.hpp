@@ -369,15 +369,15 @@ class Wave_functions
 
     // compute this[:, i] = phi[:, i] + beta[i] * this[:, i], kinda like an axpy
     template<class Ta>
-    void xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, sddk::mdarray<Ta,1> const &betas, int n__);
+    void xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, sddk::mdarray<Ta,1> &betas, int n__);
 
     // compute this[:, i] = alpha[i] * phi[:, i] + this[:, i]
     template<class Ta>
-    void axpy(device_t pu__, spin_range spins__, sddk::mdarray<Ta,1> const &alphas, Wave_functions const &phi, int n__);
+    void axpy(device_t pu__, spin_range spins__, sddk::mdarray<Ta,1> &alphas, Wave_functions const &phi, int n__);
 
     // compute this[:, ids[i]] = alpha[i] * phi[:, i] + this[:, i]
     template<class Ta>
-    void axpy_scatter(device_t pu__, spin_range spins__, sddk::mdarray<Ta,1> const &alphas, Wave_functions const &phi, sddk::mdarray<int,1> const &ids, int n__);
+    void axpy_scatter(device_t pu__, spin_range spins__, sddk::mdarray<Ta,1> &alphas, Wave_functions const &phi, sddk::mdarray<int,1> &ids, int n__);
 
 
     /// Copy values from another wave-function.

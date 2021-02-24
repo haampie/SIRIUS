@@ -459,7 +459,7 @@ Wave_functions::axpby(device_t pu__, spin_range spins__, Ta alpha, Wave_function
 
 template <class Ta>
 void
-Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, sddk::mdarray<Ta,1> const &betas, int n__)
+Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, sddk::mdarray<Ta,1> &betas, int n__)
 {
     for (int is : spins__) {
         switch (pu__) {
@@ -515,7 +515,7 @@ Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &ph
 
 template<class Ta>
 void
-Wave_functions::axpy(device_t pu__, spin_range spins__, sddk::mdarray<Ta,1> const &alphas, Wave_functions const &phi, int n__)
+Wave_functions::axpy(device_t pu__, spin_range spins__, sddk::mdarray<Ta,1> &alphas, Wave_functions const &phi, int n__)
 {
     for (int is : spins__) {
         switch (pu__) {
@@ -571,7 +571,7 @@ Wave_functions::axpy(device_t pu__, spin_range spins__, sddk::mdarray<Ta,1> cons
 
 template<class Ta>
 void
-Wave_functions::axpy_scatter(device_t pu__, spin_range spins__, sddk::mdarray<Ta,1> const &alphas, Wave_functions const &phi, sddk::mdarray<int,1> const &ids, int n__)
+Wave_functions::axpy_scatter(device_t pu__, spin_range spins__, sddk::mdarray<Ta,1> &alphas, Wave_functions const &phi, sddk::mdarray<int,1> &ids, int n__)
 {
     for (int is : spins__) {
         switch (pu__) {
@@ -687,9 +687,9 @@ Wave_functions::sumsqr(device_t pu__, spin_range spins__, int n__) const
 // template void Wave_functions::axpy_scatter(device_t pu__, spin_range spins__, sddk::mdarray<double,1> const &alphas, Wave_functions const &phi, sddk::mdarray<int,1> const &ids, int n__);
 
 template void Wave_functions::axpby(device_t pu__, spin_range spins__, double_complex alpha, Wave_functions const &phi, double_complex beta, int n__);
-template void Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, sddk::mdarray<double_complex,1> const &betas, int n__);
-template void Wave_functions::axpy(device_t pu__, spin_range spins__, sddk::mdarray<double_complex,1> const &alphas, Wave_functions const &phi, int n__);
-template void Wave_functions::axpy_scatter(device_t pu__, spin_range spins__, sddk::mdarray<double_complex,1> const &alphas, Wave_functions const &phi, sddk::mdarray<int,1> const &ids, int n__);
+template void Wave_functions::xpby(device_t pu__, spin_range spins__, Wave_functions const &phi, sddk::mdarray<double_complex,1> &betas, int n__);
+template void Wave_functions::axpy(device_t pu__, spin_range spins__, sddk::mdarray<double_complex,1> &alphas, Wave_functions const &phi, int n__);
+template void Wave_functions::axpy_scatter(device_t pu__, spin_range spins__, sddk::mdarray<double_complex,1>  &alphas, Wave_functions const &phi, sddk::mdarray<int,1> &ids, int n__);
 
 
 } // namespace sddk
