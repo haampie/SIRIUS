@@ -19,8 +19,10 @@ void repack(Container &data, std::vector<size_t> const&ids) {
     }
 }
 
-template<class Matrix, class Prec, class StateVec, class VecValType = std::vector<typename StateVec::value_type>,
-                                                   class VecIdxType = std::vector<typename StateVec::size_type>>
+template<class StateVec,
+         class VecValType = std::vector<typename StateVec::value_type>,
+         class VecIdxType = std::vector<typename StateVec::size_type>,
+         class Matrix, class Prec>
 auto multi_cg(
     Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C, 
     size_t maxiters = 10, double tol = 1e-3

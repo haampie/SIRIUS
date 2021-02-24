@@ -345,6 +345,9 @@ Wave_functions::dot(device_t pu__, spin_range spins__, Wave_functions const &phi
 {
     mdarray<double_complex, 1> s(n__, memory_t::host, "dot");
     s.zero();
+    if (pu__ == device_t::GPU) {
+        s.allocate(memory_t::device).zero(memory_t::device);
+    }
 
     for (int is : spins__) {
         switch (pu__) {
@@ -354,7 +357,7 @@ Wave_functions::dot(device_t pu__, spin_range spins__, Wave_functions const &phi
                     for (int ig = 0; ig < pw_coeffs(is).num_rows_loc(); ig++) {
                         auto x = pw_coeffs(is).prime(ig, i);
                         auto y = phi.pw_coeffs(is).prime(ig, i);
-                        s[i] += x * y;
+                        s[i] += std::conj(x) * y;
                     }
                     // todo, do something here.
                     // if (gkvecp_.gvec().reduced()) {
@@ -368,7 +371,7 @@ Wave_functions::dot(device_t pu__, spin_range spins__, Wave_functions const &phi
                         for (int j = 0; j < mt_coeffs(is).num_rows_loc(); j++) {
                             auto x = mt_coeffs(is).prime(j, i);
                             auto y = phi.mt_coeffs(is).prime(j, i);
-                            s[i] += x * y;
+                            s[i] += std::conj(x) * y;
                         }
                     }
                 }

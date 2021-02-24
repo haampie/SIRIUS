@@ -46,7 +46,7 @@ __global__ void wf_dot_kernel
         int j = n * blockDim.x + threadIdx.x;
         if (j < num_rows_loc__) {
             int k = array2D_offset(j, blockIdx.x, num_rows_loc__);
-            sdata[threadIdx.x] = accCadd(sdata[threadIdx.x], accCmul(wf_x__[k], wf_y__[k]));
+            sdata[threadIdx.x] = accCadd(sdata[threadIdx.x], accCmul(accConj(wf_x__[k]), wf_y__[k]));
         }
     }
     __syncthreads();

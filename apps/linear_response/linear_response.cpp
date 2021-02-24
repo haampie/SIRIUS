@@ -85,6 +85,10 @@ struct Wave_functions_wrap {
         x->pw_coeffs(0).prime() = [=](){
             return val;
         };
+
+        if (is_device_memory(x->preferred_memory_t())) {
+            x->pw_coeffs(0).copy_to(memory_t::device, 0, x->num_wf());
+        }
     }
 
     int cols() const {
@@ -102,9 +106,10 @@ struct Wave_functions_wrap {
         }
     }
 
-    void block_dot(Wave_functions_wrap const &y, sddk::mdarray<double_complex,1>  &rhos, size_t num) {
+    void block_dot(Wave_functions_wrap const &y, sddk::mdarray<double_complex,1> &rhos, size_t num) {
         PROFILE("linear_repsonse::Wave_functions::block_dot");
-        auto result = x->dot(device_t::CPU, sddk::spin_range(0), *y.x, num);
+        auto pu = get_device_t(y.x->preferred_memory_t());
+        auto result = x->dot(pu, sddk::spin_range(0), *y.x, num);
         for (int i = 0; i < num; ++i)
             rhos[i] = result(i);
     }
@@ -116,17 +121,20 @@ struct Wave_functions_wrap {
 
     void block_xpby(Wave_functions_wrap const &y, sddk::mdarray<double_complex,1> &alphas, int num) {
         PROFILE("linear_repsonse::Wave_functions::block_xpby");
-        x->xpby(device_t::CPU, sddk::spin_range(0), *y.x, alphas, num);
+        auto pu = get_device_t(y.x->preferred_memory_t());
+        x->xpby(pu, sddk::spin_range(0), *y.x, alphas, num);
     }
 
     void block_axpy_scatter(sddk::mdarray<double_complex,1> &alphas, Wave_functions_wrap const &y, sddk::mdarray<int,1> &ids, int num) {
         PROFILE("linear_repsonse::Wave_functions::block_axpy_scatter");
-        x->axpy_scatter(device_t::CPU, sddk::spin_range(0), alphas, *y.x, ids, num);
+        auto pu = get_device_t(y.x->preferred_memory_t());
+        x->axpy_scatter(pu, sddk::spin_range(0), alphas, *y.x, ids, num);
     }
 
     void block_axpy(sddk::mdarray<double_complex,1> &alphas, Wave_functions_wrap const &y, int num) {
         PROFILE("linear_repsonse::Wave_functions::block_axpy");
-        x->axpy(device_t::CPU, sddk::spin_range(0), alphas, *y.x, num);
+        auto pu = get_device_t(y.x->preferred_memory_t());
+        x->axpy(pu, sddk::spin_range(0), alphas, *y.x, num);
     }
 };
 
@@ -185,6 +193,7 @@ struct projector_H_min_e_S_projector {
     // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = P * (H - e_j S) * P'
     void multiply(double alpha, Wave_functions_wrap x, double beta, Wave_functions_wrap y, int num_active) {
         PROFILE("linear_repsonse::projector_H_min_e_S_projector::multiply");
+        auto pu = get_device_t(y.x->preferred_memory_t());
 
         // Hphi = H * x, Sphi = S * x
         Hk.apply_h_s<double_complex>(
@@ -197,14 +206,14 @@ struct projector_H_min_e_S_projector {
         );
 
         // Sphi[:, i] = Hphi[:, i] + min_eigenvals[:, i] * Sphi[:, i]
-        Sphi->xpby(device_t::CPU, spin_range(0), *Hphi, min_eigenvals, num_active);
+        Sphi->xpby(pu, spin_range(0), *Hphi, min_eigenvals, num_active);
 
         // We assume that x is already orthogonal to Q, so we don't apply
         // project.apply to x
         projector->apply_conj(Hk.H0().ctx().spla_context(), *Sphi, num_active);
 
         // y[:, i] <- alpha * Sphi[:, i] + beta * y[:, i]
-        y.x->axpby(device_t::CPU, spin_range(0), static_cast<double_complex>(alpha), *Sphi, static_cast<double_complex>(beta), num_active);
+        y.x->axpby(pu, spin_range(0), static_cast<double_complex>(alpha), *Sphi, static_cast<double_complex>(beta), num_active);
     }
 };
 
@@ -238,13 +247,47 @@ void ground_state(Simulation_context& ctx,
         auto &Q = kp->spinor_wave_functions();
         auto num_sc = Q.num_sc();
         auto num_wf = Q.num_wf();
-        auto& mp = ctx.mem_pool(ctx.host_memory_t());
 
-        Wave_functions Hphi(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
-        Wave_functions Sphi(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
+        auto& host_mp = ctx.mem_pool(memory_t::host);
+
+        Wave_functions Hphi(host_mp, kp->gkvec_partition(), num_wf, ctx.preferred_memory_t(), num_sc);
+        Wave_functions Sphi(host_mp, kp->gkvec_partition(), num_wf, ctx.preferred_memory_t(), num_sc);
 
         // When applying projectors, we need S * Q to be available.
-        Wave_functions SQ(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
+        Wave_functions SQ(host_mp, kp->gkvec_partition(), num_wf, ctx.preferred_memory_t(), num_sc);
+
+        // State vectors for CG, where the right hand side B gets overwritten in place
+        // X is the solution, and U and C are auxiliary.
+        Wave_functions X(host_mp, kp->gkvec_partition(), num_wf, ctx.preferred_memory_t(), num_sc);
+        Wave_functions B(host_mp, kp->gkvec_partition(), num_wf, ctx.preferred_memory_t(), num_sc);
+        Wave_functions U(host_mp, kp->gkvec_partition(), num_wf, ctx.preferred_memory_t(), num_sc);
+        Wave_functions C(host_mp, kp->gkvec_partition(), num_wf, ctx.preferred_memory_t(), num_sc);
+
+        // Create a constant right-hand side.
+        B.pw_coeffs(0).prime() = []() { return 1.0; };
+
+        // Move wave functions to the gpu if needed.
+        if (is_device_memory(ctx.preferred_memory_t())) {
+            auto &device_mp = ctx.mem_pool(memory_t::device);
+
+            for (int i = 0; i < 1 /*num_sc*/; i++) {
+               Q.pw_coeffs(i).allocate(device_mp);
+               Hphi.pw_coeffs(i).allocate(device_mp);
+               Sphi.pw_coeffs(i).allocate(device_mp);
+               SQ.pw_coeffs(i).allocate(device_mp);
+               X.pw_coeffs(i).allocate(device_mp);
+               B.pw_coeffs(i).allocate(device_mp);
+               U.pw_coeffs(i).allocate(device_mp);
+               C.pw_coeffs(i).allocate(device_mp);
+
+               Q.pw_coeffs(i).copy_to(memory_t::device, 0, num_wf);
+               B.pw_coeffs(i).copy_to(memory_t::device, 0, num_wf);
+            }
+        }
+
+        kp->copy_hubbard_orbitals_on_device();
+
+        auto H_k = H0(*kp);
 
         sirius::apply_S_operator<double_complex>(
             ctx.processing_unit(),
@@ -265,7 +308,7 @@ void ground_state(Simulation_context& ctx,
         }
 
         auto H_min_e_times_S = projector_H_min_e_S_projector(
-            H0(*kp),
+            std::move(H_k),
             &projector,
             std::move(md_eigvals),
             &Hphi,
@@ -274,18 +317,8 @@ void ground_state(Simulation_context& ctx,
 
         identity_preconditioner preconditioner{};
 
-        // State vectors for CG, where the right hand side B gets overwritten in place
-        // X is the solution, and U and C are auxiliary.
-        Wave_functions X(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
-        Wave_functions B(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
-        Wave_functions U(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
-        Wave_functions C(mp, kp->gkvec_partition(), num_wf, ctx.aux_preferred_memory_t(), num_sc);
-
         // Initial guess should be orthogonal to psi, so 0 works.
-        X.zero(device_t::CPU, 0, 0, num_wf);
-
-        // Create a constant right-hand side.
-        B.pw_coeffs(0).prime() = []() { return 1.0; };
+        X.zero(get_device_t(X.preferred_memory_t()), 0, 0, num_wf);
 
         // Apply B <- (I - SQQ')B
         projector.apply_conj(ctx.spla_context(), B, num_wf);
@@ -296,8 +329,6 @@ void ground_state(Simulation_context& ctx,
         auto C_wrap = Wave_functions_wrap{&C};
 
         auto residuals_per_iteration = sirius::cg::multi_cg<
-            decltype(H_min_e_times_S),
-            decltype(preconditioner),
             decltype(X_wrap),
             sddk::mdarray<double_complex, 1>,
             sddk::mdarray<int, 1>
